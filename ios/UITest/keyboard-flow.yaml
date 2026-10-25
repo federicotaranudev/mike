@@ -2,17 +2,30 @@ appId: dev.federicotaranu.mike
 ---
 # Native keyboard dismissal evidence for the v0.2.8 repair:
 # open the composer keyboard, dismiss by tap-outside, reopen, dismiss by drag-down.
+# waitForAnimationToEnd after each interaction: the FIRST keyboard presentation
+# on a fresh simulator is slow, and screenshotting mid-animation produced a
+# false FAIL ("keyboard opened on composer tap") in run 40227627456.
 - launchApp
 - assertVisible: "Message Mike..."
+- waitForAnimationToEnd:
+    timeout: 5000
 - takeScreenshot: kb0-closed
 - tapOn: "Message Mike..."
+- waitForAnimationToEnd:
+    timeout: 8000
 - takeScreenshot: kb1-open
 - tapOn:
     point: "50%,35%"
+- waitForAnimationToEnd:
+    timeout: 8000
 - takeScreenshot: kb2-tap-dismissed
 - tapOn: "Message Mike..."
+- waitForAnimationToEnd:
+    timeout: 8000
 - takeScreenshot: kb3-reopened
 - swipe:
     start: "50%,45%"
     end: "50%,80%"
+- waitForAnimationToEnd:
+    timeout: 8000
 - takeScreenshot: kb4-drag-dismissed
