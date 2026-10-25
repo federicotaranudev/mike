@@ -1,6 +1,7 @@
 name: Build Mike IPA
 
 on:
+  push: # TEMPORARY one-shot trigger, remove after build
   workflow_dispatch:
 
 permissions:
