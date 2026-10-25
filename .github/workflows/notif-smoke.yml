@@ -68,9 +68,12 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.maestro/bin:$PATH"
           set +e
-          maestro test ios/UITest/notif-flow.yaml 2>&1 | grep --line-buffered -E "NOTIF_|COMPLETED|FAILED|Error" | tee /tmp/notif-schedule.log
+          maestro test ios/UITest/notif-flow.yaml 2>&1 | tee /tmp/notif-maestro.log
+          MAESTRO_RC=$?
           set -e
-          { echo "### Notification smoke - scheduling"; echo '```'; cat /tmp/notif-schedule.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          # App NSLog() output lives in the simulator unified log, not Maestro's output.
+          xcrun simctl spawn booted log show --last 3m --style compact --predicate 'process == "MikeSim"' 2>/dev/null | grep -E "NOTIF_" > /tmp/notif-schedule.log || true
+          { echo "### Notification smoke - scheduling"; echo '```'; cat /tmp/notif-schedule.log; echo '```'; echo "maestro exit: $MAESTRO_RC (tail:)"; tail -5 /tmp/notif-maestro.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           grep -q "NOTIF_PENDING count=1" /tmp/notif-schedule.log || { echo "scheduling not confirmed"; exit 1; }
       - name: Wait for fire time, relaunch, verify delivery
         run: |
