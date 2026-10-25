@@ -1,5 +1,7 @@
 name: sim-screenshots
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:  # TEMPORARY: ui dispatch unreliable; removed after this evidence run
 
 permissions:
   contents: write
@@ -9,20 +11,24 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Compile app for the iOS simulator (3 tab variants)
+      - name: Compile app for the iOS simulator (6 variants)
         run: |
           set -euo pipefail
           cd ios/Sources/Mike
-          for TAB in CHAT APPROVALS ACTIVITY; do
-            FLAG=""
-            [ "$TAB" = APPROVALS ] && FLAG="-D SIM_TAB_APPROVALS"
-            [ "$TAB" = ACTIVITY ] && FLAG="-D SIM_TAB_ACTIVITY"
+          build_variant() {
+            local NAME="$1"; shift
             xcrun -sdk iphonesimulator swiftc -parse-as-library \
               -target arm64-apple-ios17.0-simulator \
-              -module-name MikeSim $FLAG \
-              *.swift -o "/tmp/MikeSim_$TAB"
-            echo "built $TAB"
-          done
+              -module-name MikeSim "$@" \
+              *.swift -o "/tmp/MikeSim_$NAME"
+            echo "built $NAME"
+          }
+          build_variant CHAT -D SIM_FORCE_GROQ
+          build_variant APPROVALS -D SIM_TAB_APPROVALS -D SIM_FORCE_GROQ
+          build_variant ACTIVITY -D SIM_TAB_ACTIVITY -D SIM_FORCE_GROQ
+          build_variant SETTINGS -D SIM_TAB_SETTINGS -D SIM_FORCE_LOCAL
+          build_variant ONBOARDING -D SIM_ONBOARDING
+          build_variant LOCALCHAT -D SIM_FORCE_LOCAL
       - name: Bundle and screenshot each variant
         run: |
           set -euo pipefail
@@ -39,7 +45,7 @@ jobs:
           sys.exit('no iPhone sim')")
           echo "device $DEV"
           xcrun simctl boot "$DEV" || true
-          for TAB in CHAT APPROVALS ACTIVITY; do
+          for TAB in CHAT APPROVALS ACTIVITY SETTINGS ONBOARDING LOCALCHAT; do
             APP="/tmp/MikeSim_$TAB.app"
             mkdir -p "$APP"
             cp "/tmp/MikeSim_$TAB" "$APP/MikeSim"
@@ -51,7 +57,7 @@ jobs:
             "CFBundleName": "Mike",
             "CFBundleDisplayName": "Mike",
             "CFBundlePackageType": "APPL",
-            "CFBundleShortVersionString": "0.1",
+            "CFBundleShortVersionString": "0.2",
             "CFBundleVersion": "1",
             "MinimumOSVersion": "17.0",
             "UIDeviceFamily": [1],
@@ -81,4 +87,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create sim-evidence --title "Simulator screenshots (UI evidence)" --notes "Automated simulator captures for review - not a Mike release. Safe to delete." --latest=false || true
-          gh release upload sim-evidence shots/CHAT.png shots/APPROVALS.png shots/ACTIVITY.png --clobber
+          gh release upload sim-evidence shots/CHAT.png shots/APPROVALS.png shots/ACTIVITY.png shots/SETTINGS.png shots/ONBOARDING.png shots/LOCALCHAT.png --clobber
