@@ -157,6 +157,22 @@ check("null content tolerated", parsed?.choices.first?.message.content == nil)
 check("model url is huggingface https litertlm", ModelManager.modelURL.scheme == "https" && ModelManager.modelURL.host == "huggingface.co" && ModelManager.modelURL.path.hasSuffix(".litertlm"))
 check("model size constant matches the verified artifact", ModelManager.expectedBytes == 2_008_432_640)
 
+// 9b. Both published artifacts are pinned to the publisher's LFS hashes, and
+// the user's artifact choice is explicit (default stays GPU, cpu is opt-in).
+let gpuA = ModelManager.Artifact.gpu
+let cpuA = ModelManager.Artifact.cpu
+check("gpu artifact pins publisher sha256", gpuA.sha256 == "a53a59001894c58e6bdb5b9b227709f91a2e3e556baa7d85acf9c55402ba5cf5")
+check("cpu artifact pins publisher sha256", cpuA.sha256 == "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c")
+check("cpu artifact size matches publisher", cpuA.expectedBytes == 2_588_147_712)
+check("cpu artifact url is huggingface https litertlm", cpuA.url.scheme == "https" && cpuA.url.host == "huggingface.co" && cpuA.url.path.hasSuffix(".litertlm"))
+check("backend follows artifact not guesswork", gpuA.usesCPU == false && cpuA.usesCPU == true)
+let mm = ModelManager()
+check("artifact default is the shipped gpu build", mm.artifact == .gpu)
+mm.select(.cpu)
+check("explicit artifact choice is honored", mm.artifact == .cpu)
+mm.select(.gpu)
+check("artifact choice can switch back", mm.artifact == .gpu)
+
 // 12. Notification scheduling math is real: the calendar trigger's next
 // fire date equals the scheduled date (no permission needed to verify this;
 // the actual permission prompt and delivery only exist on device, where
