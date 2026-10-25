@@ -1,1 +1,53 @@
+name: selftest
+on:
+  workflow_dispatch:
+  push:  # TEMPORARY: ui dispatch unreliable; removed after this run
 
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile behavior tests for the iOS simulator
+        run: |
+          set -euo pipefail
+          xcrun -sdk iphonesimulator swiftc \
+            -target arm64-apple-ios17.0-simulator \
+            -module-name MikeSelfTest \
+            ios/Sources/Mike/Provider.swift ios/Sources/Mike/APIClient.swift ios/Sources/Mike/GroqClient.swift \
+            ios/SelfTest/main.swift -o /tmp/MikeSelfTest
+          echo compiled
+      - name: Run on simulator
+        run: |
+          set -euo pipefail
+          APP=/tmp/MikeSelfTest.app
+          mkdir -p "$APP"
+          cp /tmp/MikeSelfTest "$APP/MikeSelfTest"
+          python3 - "$APP/Info.plist" <<'PLIST'
+          import plistlib, sys
+          plistlib.dump({
+            "CFBundleExecutable": "MikeSelfTest",
+            "CFBundleIdentifier": "dev.federicotaranu.mike.selftest",
+            "CFBundleName": "MikeSelfTest",
+            "CFBundlePackageType": "APPL",
+            "MinimumOSVersion": "17.0",
+            "UIDeviceFamily": [1],
+            "CFBundleSupportedPlatforms": ["iPhoneSimulator"],
+          }, open(sys.argv[1], "wb"))
+          PLIST
+          DEV=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          for rt,devs in d.items():
+              if 'iOS' not in rt: continue
+              for dev in devs:
+                  if 'iPhone' in dev['name']:
+                      print(dev['udid']); sys.exit(0)
+          sys.exit('no iPhone sim')")
+          xcrun simctl boot "$DEV" || true
+          codesign -s - --timestamp=none "$APP" || true
+          xcrun simctl spawn booted "$APP/MikeSelfTest" 2>&1 | tee result.txt || true
+          grep -q "ALL PASS" result.txt
