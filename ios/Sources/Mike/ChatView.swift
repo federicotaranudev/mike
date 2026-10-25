@@ -3,6 +3,7 @@ import SwiftUI
 struct ChatView: View {
     @EnvironmentObject var api: APIClient
     @EnvironmentObject var providers: ProviderStore
+    @EnvironmentObject var agent: AgentStore
     #if SIM_FORCE_LOCAL
     // Screenshot variant: show the honest "not wired yet" state up front.
     @State private var messages: [ChatMessage] = [
@@ -104,12 +105,10 @@ struct ChatView: View {
                     return
                 }
                 do {
-                    var history = [GroqClient.Msg(role: "system",
-                        content: "You are Mike, a personal assistant. Be concise, and honest about what you can't do.")]
-                    history += messages.suffix(20).map {
-                        GroqClient.Msg(role: $0.role == .user ? "user" : "assistant", content: $0.text)
+                    let history = messages.suffix(20).map {
+                        Tooling.ToolMsg(role: $0.role == .user ? "user" : "assistant", content: $0.text)
                     }
-                    let reply = try await GroqClient.chat(key: key, history: history)
+                    let reply = try await AgentLoop.run(key: key, conversation: history, store: agent)
                     messages.append(ChatMessage(role: .mike, text: reply))
                 } catch {
                     messages.append(ChatMessage(role: .mike, text: error.localizedDescription))
@@ -133,4 +132,4 @@ struct ChatView: View {
     }
 }
 
-#Preview { ChatView().environmentObject(APIClient()).environmentObject(ProviderStore()) }
+#Preview { ChatView().environmentObject(APIClient()).environmentObject(ProviderStore()).environmentObject(AgentStore()) }
