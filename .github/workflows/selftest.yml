@@ -48,6 +48,13 @@ jobs:
                       print(dev['udid']); sys.exit(0)
           sys.exit('no iPhone sim')")
           xcrun simctl boot "$DEV" || true
-          codesign -s - --timestamp=none "$APP" || true
+          python3 - /tmp/ent.plist <<'ENT'
+          import plistlib, sys
+          plistlib.dump({
+            "application-identifier": "TESTTEAMID.dev.federicotaranu.mike.selftest",
+            "keychain-access-groups": ["TESTTEAMID.dev.federicotaranu.mike.selftest"],
+          }, open(sys.argv[1], "wb"))
+          ENT
+          codesign -s - --timestamp=none --entitlements /tmp/ent.plist "$APP" || true
           xcrun simctl spawn booted "$APP/MikeSelfTest" 2>&1 | tee result.txt || true
           grep -q "ALL PASS" result.txt
