@@ -5,14 +5,16 @@ appId: dev.federicotaranu.mike
 # reminder. A SECOND relaunch with unchanged signals must stay silent (durable
 # dedup - no check-in spam).
 - launchApp
-- assertVisible:
-    text: "Welcome back"
+- extendedWaitUntil:
+    visible:
+      text: "Welcome back"
     timeout: 20000
 - takeScreenshot: proactive-checkin
 - killApp
 - launchApp
 - waitForAnimationToEnd:
     timeout: 8000
-- assertNotVisible:
-    text: "Welcome back"
+- extendedWaitUntil:
+    notVisible:
+      text: "Welcome back"
     timeout: 10000
