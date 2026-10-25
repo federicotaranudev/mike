@@ -66,8 +66,7 @@ struct ChatView: View {
                     .padding(.trailing, 6)
                 }
                 .padding(.vertical, 6)
-                .background(Color(.secondarySystemBackground).opacity(0.9))
-                .clipShape(Capsule())
+                .modifier(GlassCapsule())
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
             }
