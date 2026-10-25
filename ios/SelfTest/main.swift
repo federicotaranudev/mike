@@ -99,7 +99,9 @@ check("empty remember rejected", (try? Tooling.validatedArgs(mkCall("remember", 
 check("valid remember accepted", (try? Tooling.validatedArgs(mkCall("remember", "{\"text\":\"Fred likes espressos\"}"))) != nil)
 check("past reminder rejected", (try? Tooling.validatedArgs(mkCall("schedule_reminder", "{\"text\":\"x\",\"at\":\"2020-01-01T10:00:00+02:00\"}"))) == nil)
 check("garbage date rejected", (try? Tooling.validatedArgs(mkCall("schedule_reminder", "{\"text\":\"x\",\"at\":\"tomorrow-ish\"}"))) == nil)
-check("future reminder accepted", (try? Tooling.validatedArgs(mkCall("schedule_reminder", "{\"text\":\"x\",\"at\":\"2100-01-01T10:00:00+02:00\"}"))) != nil)
+let futureISO = ISO8601DateFormatter().string(from: Date().addingTimeInterval(30 * 24 * 3600))
+check("future reminder accepted", (try? Tooling.validatedArgs(mkCall("schedule_reminder", "{\"text\":\"x\",\"at\":\"\(futureISO)\"}"))) != nil)
+check("over-one-year reminder rejected", (try? Tooling.validatedArgs(mkCall("schedule_reminder", "{\"text\":\"x\",\"at\":\"2100-01-01T10:00:00+02:00\"}"))) == nil)
 check("broken JSON rejected", (try? Tooling.validatedArgs(mkCall("recall", "not json"))) == nil)
 
 // Write tools never execute without approval
