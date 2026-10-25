@@ -21,7 +21,7 @@ struct OnboardingView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Pick where Mike's thinking happens. You can switch later in Settings - your chats and memory stay, and Mike never switches on its own.")
+                    Text("Pick where Mike's thinking happens. You can switch later in Settings - your chats and settings stay, and Mike never switches on its own.")
                         .foregroundStyle(.secondary)
                     localCard
                     groqCard
@@ -58,7 +58,7 @@ struct OnboardingView: View {
     private var groqCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Groq API", systemImage: "bolt").font(.headline)
-            Text("Fast cloud replies on Groq's free tier. You paste your own key here, privately - it stays on this phone.")
+            Text("Fast cloud replies via Groq's API. You paste your own key here, privately - it is stored in the iPhone Keychain and sent only to Groq (api.groq.com) when you chat.")
                 .font(.subheadline)
             SecureField("gsk_...", text: $groqKeyInput)
                 .textFieldStyle(.roundedBorder)
