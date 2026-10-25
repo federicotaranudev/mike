@@ -1,0 +1,133 @@
+name: runtime-smoke
+on:
+  workflow_dispatch:
+
+# REAL LiteRT-LM runtime validation on the CI simulator (arm64 slice exists in
+# CLiteRTLM.xcframework v0.18.1). Loads the actual 2.0 GB model, runs one
+# generation, prints SMOKE_RESULT. GPU backend first, CPU retry on failure.
+# Zero cost: public model, public release asset, free runner.
+jobs:
+  smoke:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch LiteRT-LM Swift wrapper sources (v0.18.1)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/litertlm
+          curl -fsSL "https://github.com/google-ai-edge/LiteRT-LM/archive/refs/tags/v0.18.1.tar.gz" | tar -xz -C /tmp/litertlm --strip-components=1
+          ls /tmp/litertlm/swift
+      - name: Download CLiteRTLM.xcframework
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/xcf.zip "https://github.com/google-ai-edge/LiteRT-LM/releases/download/v0.18.1/CLiteRTLM.xcframework.zip"
+          unzip -q -o /tmp/xcf.zip -d /tmp/xcf
+          ls /tmp/xcf/CLiteRTLM.xcframework
+      - name: Compile LiteRTLM Swift module from wrapper sources
+        run: |
+          set -euo pipefail
+          FW=/tmp/xcf/CLiteRTLM.xcframework/ios-arm64-simulator/CLiteRTLM.framework
+          cd /tmp/litertlm/swift
+          xcrun -sdk iphonesimulator swiftc -parse-as-library \
+            -target arm64-apple-ios17.0-simulator \
+            -module-name LiteRTLM \
+            -emit-library -emit-module \
+            -emit-module-path /tmp/litertlm/LiteRTLM.swiftmodule \
+            -Xcc -fmodule-map-file="$FW/Modules/module.modulemap" \
+            -F /tmp/xcf/CLiteRTLM.xcframework/ios-arm64-simulator -framework CLiteRTLM \
+            $(ls *.swift | grep -v Tests) \
+            -o /tmp/litertlm/libLiteRTLM.dylib
+          echo wrapper-built
+      - name: Compile Mike smoke variant for the iOS simulator
+        run: |
+          set -euo pipefail
+          FW=/tmp/xcf/CLiteRTLM.xcframework/ios-arm64-simulator/CLiteRTLM.framework
+          cd ios/Sources/Mike
+          xcrun -sdk iphonesimulator swiftc -parse-as-library \
+            -target arm64-apple-ios17.0-simulator \
+            -module-name MikeSim \
+            -I /tmp/litertlm \
+            -Xcc -fmodule-map-file="$FW/Modules/module.modulemap" \
+            -F /tmp/xcf/CLiteRTLM.xcframework/ios-arm64-simulator -framework CLiteRTLM \
+            -L /tmp/litertlm -lLiteRTLM \
+            *.swift -o /tmp/MikeSim_SMOKE \
+            -Xlinker -rpath -Xlinker @executable_path/Frameworks
+          echo app-built
+      - name: Bundle, install, stage model
+        run: |
+          set -euo pipefail
+          FW=/tmp/xcf/CLiteRTLM.xcframework/ios-arm64-simulator/CLiteRTLM.framework
+          DEV=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          for rt,devs in d.items():
+              if 'iOS' not in rt: continue
+              for dev in devs:
+                  if 'iPhone' in dev['name']:
+                      print(dev['udid']); sys.exit(0)
+          sys.exit('no iPhone sim')")
+          echo "device $DEV"
+          xcrun simctl boot "$DEV" || true
+          APP=/tmp/MikeSim_SMOKE.app
+          mkdir -p "$APP/Frameworks"
+          cp /tmp/MikeSim_SMOKE "$APP/MikeSim"
+          cp -R "$FW" "$APP/Frameworks/"
+          cp /tmp/litertlm/libLiteRTLM.dylib "$APP/Frameworks/"
+          python3 - "$APP/Info.plist" <<'PLIST'
+          import plistlib, sys
+          plistlib.dump({
+            "CFBundleExecutable": "MikeSim",
+            "CFBundleIdentifier": "dev.federicotaranu.mike",
+            "CFBundleName": "Mike",
+            "CFBundleDisplayName": "Mike",
+            "CFBundlePackageType": "APPL",
+            "CFBundleShortVersionString": "0.4",
+            "CFBundleVersion": "1",
+            "MinimumOSVersion": "17.0",
+            "UIDeviceFamily": [1],
+            "CFBundleSupportedPlatforms": ["iPhoneSimulator"],
+            "UILaunchScreen": {},
+          }, open(sys.argv[1], "wb"))
+          PLIST
+          codesign -s - --timestamp=none --force "$APP/Frameworks/CLiteRTLM.framework" || true
+          codesign -s - --timestamp=none --force "$APP/Frameworks/libLiteRTLM.dylib" || true
+          codesign -s - --timestamp=none --force "$APP" || true
+          xcrun simctl uninstall booted dev.federicotaranu.mike || true
+          xcrun simctl install booted "$APP"
+          echo "downloading model (2,008,432,640 bytes)..."
+          curl -fsSL -o /tmp/model.litertlm "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-gpu.litertlm"
+          ls -l /tmp/model.litertlm
+          CONT=$(xcrun simctl get_app_container booted dev.federicotaranu.mike data)
+          mkdir -p "$CONT/Documents"
+          cp /tmp/model.litertlm "$CONT/Documents/model.litertlm"
+          echo "CONT=$CONT" >> "$GITHUB_ENV"
+      - name: Smoke run - GPU backend
+        run: |
+          set -euo pipefail
+          set +e
+          xcrun simctl launch --console booted dev.federicotaranu.mike -RuntimeSmoke "$CONT/Documents/model.litertlm" 2>&1 | tee /tmp/smoke-gpu.log
+          set -e
+          grep -E "SMOKE_(START|RESULT)" /tmp/smoke-gpu.log || echo "no smoke output captured"
+      - name: Smoke run - CPU backend (only if GPU failed)
+        run: |
+          set -euo pipefail
+          if grep -q "SMOKE_RESULT OK" /tmp/smoke-gpu.log; then
+            echo "GPU smoke passed, CPU retry not needed"
+            exit 0
+          fi
+          set +e
+          xcrun simctl launch --console booted dev.federicotaranu.mike -RuntimeSmoke "$CONT/Documents/model.litertlm" cpu 2>&1 | tee /tmp/smoke-cpu.log
+          set -e
+          grep -E "SMOKE_(START|RESULT)" /tmp/smoke-cpu.log || echo "no smoke output captured"
+      - name: Verdict
+        run: |
+          set -euo pipefail
+          if grep -q "SMOKE_RESULT OK" /tmp/smoke-gpu.log 2>/dev/null; then
+            echo "RUNTIME-SMOKE: GPU OK"
+          elif grep -q "SMOKE_RESULT OK" /tmp/smoke-cpu.log 2>/dev/null; then
+            echo "RUNTIME-SMOKE: CPU OK (GPU failed)"
+          else
+            echo "RUNTIME-SMOKE: NO WORKING BACKEND ON SIMULATOR"
+            exit 1
+          fi
