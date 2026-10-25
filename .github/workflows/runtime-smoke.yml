@@ -108,9 +108,9 @@ jobs:
         run: |
           set -euo pipefail
           set +e
-          xcrun simctl launch --console booted dev.federicotaranu.mike -RuntimeSmoke "$CONT/Documents/model.litertlm" 2>&1 | tee /tmp/smoke-gpu.log
+          xcrun simctl launch --console booted dev.federicotaranu.mike -RuntimeSmoke "$CONT/Documents/model.litertlm" 2>&1 | grep --line-buffered -E "SMOKE_|error|Error|fatal" | tee /tmp/smoke-gpu.log
           set -e
-          grep -E "SMOKE_(START|RESULT)" /tmp/smoke-gpu.log || echo "no smoke output captured"
+          { echo "### Runtime smoke - GPU"; echo '```'; grep -E "SMOKE_(START|RESULT)" /tmp/smoke-gpu.log || echo "no smoke output captured"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Smoke run - CPU backend (only if GPU failed)
         run: |
           set -euo pipefail
@@ -119,17 +119,19 @@ jobs:
             exit 0
           fi
           set +e
-          xcrun simctl launch --console booted dev.federicotaranu.mike -RuntimeSmoke "$CONT/Documents/model.litertlm" cpu 2>&1 | tee /tmp/smoke-cpu.log
+          xcrun simctl launch --console booted dev.federicotaranu.mike -RuntimeSmoke "$CONT/Documents/model.litertlm" cpu 2>&1 | grep --line-buffered -E "SMOKE_|error|Error|fatal" | tee /tmp/smoke-cpu.log
           set -e
-          grep -E "SMOKE_(START|RESULT)" /tmp/smoke-cpu.log || echo "no smoke output captured"
+          { echo "### Runtime smoke - CPU retry"; echo '```'; grep -E "SMOKE_(START|RESULT)" /tmp/smoke-cpu.log || echo "no smoke output captured"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Verdict
         run: |
           set -euo pipefail
           if grep -q "SMOKE_RESULT OK" /tmp/smoke-gpu.log 2>/dev/null; then
-            echo "RUNTIME-SMOKE: GPU OK"
+            V="RUNTIME-SMOKE: GPU OK"
           elif grep -q "SMOKE_RESULT OK" /tmp/smoke-cpu.log 2>/dev/null; then
-            echo "RUNTIME-SMOKE: CPU OK (GPU failed)"
+            V="RUNTIME-SMOKE: CPU OK (GPU failed)"
           else
-            echo "RUNTIME-SMOKE: NO WORKING BACKEND ON SIMULATOR"
+            V="RUNTIME-SMOKE: NO WORKING BACKEND ON SIMULATOR"
+            echo "$V" | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+          echo "$V" | tee -a "$GITHUB_STEP_SUMMARY"
