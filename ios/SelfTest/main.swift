@@ -151,8 +151,8 @@ check("tool_calls response parses", parsed?.choices.first?.message.tool_calls?.f
 check("null content tolerated", parsed?.choices.first?.message.content == nil)
 
 // 9. Model download source is fixed, https, Hugging Face only
-check("model url is huggingface https", ModelManager.modelURL.scheme == "https" && ModelManager.modelURL.host == "huggingface.co")
-check("model size constant matches the verified artifact", ModelManager.expectedBytes == 2_841_481_184)
+check("model url is huggingface https litertlm", ModelManager.modelURL.scheme == "https" && ModelManager.modelURL.host == "huggingface.co" && ModelManager.modelURL.path.hasSuffix(".litertlm"))
+check("model size constant matches the verified artifact", ModelManager.expectedBytes == 2_008_432_640)
 
 let verdict = failures == 0 ? "ALL PASS" : "\(failures) FAILURES"
 print(verdict)
