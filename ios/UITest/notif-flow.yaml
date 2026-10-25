@@ -13,6 +13,17 @@ appId: dev.federicotaranu.mike
 - tapOn:
     text: "Allow"
     optional: true
+# The system permission dialog can appear a beat after launch; if the first
+# optional tap missed it, wait for it to show up and tap again. Optional so a
+# pre-granted permission (no dialog at all) does not fail the flow.
+- extendedWaitUntil:
+    visible:
+      text: "Allow"
+    timeout: 12000
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 15000
 - killApp
