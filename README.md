@@ -2,6 +2,8 @@
 
 # Mike
 
+<img src="mike-logo.png" alt="Mike logo" width="180">
+
 **A personal, proactive, self-improving AI agent. Self-hosted, free, and honest about what it does.**
 
 ![status](https://img.shields.io/badge/status-v0.1%20scaffold-orange)
