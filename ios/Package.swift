@@ -11,8 +11,9 @@ let package = Package(
         .package(url: "https://github.com/google-ai-edge/LiteRT-LM", exact: "0.18.1")
     ],
     targets: [
-        .target(name: "Mike", path: "Sources/Mike",
-                dependencies: [.product(name: "LiteRTLM", package: "LiteRT-LM")])
+        .target(name: "Mike",
+                dependencies: [.product(name: "LiteRTLM", package: "LiteRT-LM")],
+                path: "Sources/Mike")
     ],
     swiftLanguageModes: [.v5]
 )
