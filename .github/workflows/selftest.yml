@@ -1,7 +1,6 @@
 name: selftest
 on:
   workflow_dispatch:
-  push:  # TEMPORARY: ui dispatch unreliable; removed after this run
 
 permissions:
   contents: read
