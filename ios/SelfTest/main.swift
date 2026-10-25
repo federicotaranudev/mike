@@ -49,9 +49,10 @@ let mockList = [
 ]
 let resolved = GroqClient.resolveChatModel(from: mockList)
 check("classifier never selected from 11-model list", resolved == "llama-3.3-70b-versatile")
-check("resolved model is not blocked", !GroqClient.blockedModelPatterns.contains { resolved.lowercased().contains($0) })
+check("unknown future id never selected", GroqClient.resolveChatModel(from: ["acme/future-llama-9b"]) == nil)
+check("resolved model is on the allowlist", GroqClient.supportedChatModels.contains(resolved ?? ""))
 let onlyClassifiers = ["llama-guard-3-8b", "whisper-large-v3"]
-check("all-blocked list falls back to chat default", GroqClient.resolveChatModel(from: onlyClassifiers) == "llama-3.3-70b-versatile")
+check("unsupported-only list returns nil, never a guess", GroqClient.resolveChatModel(from: onlyClassifiers) == nil)
 // 6. A bad stored pick from an older build is ignored on the next send
 UserDefaults.standard.set("llama-guard-3-8b", forKey: "mike.groqModel")
 UserDefaults.standard.set(mockList, forKey: "mike.groqModels")
