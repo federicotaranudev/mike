@@ -8,6 +8,8 @@
 
 ![status](https://img.shields.io/badge/status-v0.1%20scaffold-orange)
 ![python](https://img.shields.io/badge/python-3.13-blue)
+![cost](https://img.shields.io/badge/cost-0%E2%82%AC%20free%20forever-brightgreen)
+![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 </div>
 
@@ -18,7 +20,10 @@ Mike is two parts:
 - **an iPhone app** for chat, approvals and status (sideloaded, no App Store, no paid Apple account)
 - **an agent core** running on your own PC: memory, scheduled jobs, model routing and a self-improvement loop with guardrails
 
-No subscriptions, no paid APIs, no local models. The PC runs the agent; free online models do the thinking.
+Mike itself is free, forever. No subscriptions, no paid APIs, no local models.
+The PC runs the agent; free online models do the thinking. Those third-party
+free tiers can change their limits over time - if they do, Mike says so and
+stops. It never switches to anything paid on its own.
 
 ## What "self-improving" means here
 
@@ -78,4 +83,4 @@ The API listens on `127.0.0.1:8787` and is meant to be reached only through a Cl
 
 ## License
 
-No license chosen yet. Private project; all rights reserved by the owner until the user picks one.
+MIT - see [LICENSE](LICENSE).
