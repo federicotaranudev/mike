@@ -49,4 +49,26 @@ enum LocalInference {
             "The on-device runtime is not in this build."])
         #endif
     }
+
+    /// One-shot engine init + single generation for CI validation (RuntimeSmoke).
+    /// Separate from LocalEngine so a smoke run never reuses app state.
+    static func smokeReply(prompt: String, modelPath: String, forceCPU: Bool) async throws -> String {
+        #if canImport(LiteRTLM)
+        let backend: Backend = forceCPU ? .cpu() : .gpu
+        let config = try EngineConfig(modelPath: modelPath, backend: backend,
+                                      cacheDir: NSTemporaryDirectory())
+        let e = Engine(engineConfig: config)
+        let t0 = Date()
+        try await e.initialize()
+        let initSecs = Date().timeIntervalSince(t0)
+        let c = try await e.createConversation()
+        let t1 = Date()
+        let r = try await c.sendMessage(Message(prompt))
+        let genSecs = Date().timeIntervalSince(t1)
+        return "init=\(String(format: "%.1f", initSecs))s gen=\(String(format: "%.1f", genSecs))s reply=\(try r.toString)"
+        #else
+        throw NSError(domain: "Mike", code: 0, userInfo: [NSLocalizedDescriptionKey:
+            "runtime not bundled in this build"])
+        #endif
+    }
 }
