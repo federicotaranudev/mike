@@ -1,13 +1,15 @@
 """Model calls: one user-approved provider, fail closed.
 
-Mike uses exactly one inference provider that the user explicitly chose and
-approved. When the free daily quota is spent, Mike says so and stops - it
-never moves the user's data to a different provider on its own, and it never
-falls back to anything paid.
+Design contract: Mike may use exactly one inference provider, and only after
+the user explicitly chooses and approves it. Until that approval and its key
+exist, no provider is configured and every call raises ProviderNotConfigured.
+When a free daily quota is spent, Mike says so and stops - it must never move
+the user's data to a different provider on its own, and never falls back to
+anything paid.
 
-Checked 25 Oct 2026, Groq free tier: ~1,000 requests/day, 30/min,
-200K tokens/day (console.groq.com/docs/rate-limits). Other providers can be
-added later, each only after the user's explicit yes.
+Reference numbers, checked 25 Oct 2026, Groq free tier: ~1,000 requests/day,
+30/min, 200K tokens/day (console.groq.com/docs/rate-limits). Other providers
+can be added later, each only after the user's explicit yes.
 """
 from __future__ import annotations
 import httpx
