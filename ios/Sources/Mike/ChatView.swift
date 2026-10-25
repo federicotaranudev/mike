@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ChatView: View {
     @EnvironmentObject var api: APIClient
+    @EnvironmentObject var providers: ProviderStore
     @State private var messages: [ChatMessage] = [
         ChatMessage(role: .mike, text: "Hey, I'm Mike. Ask me something, or tell me what to remember. Watching things on my own isn't built yet - when it is, I'll tell you here.")
     ]
@@ -62,15 +63,41 @@ struct ChatView: View {
         thinking = true
         Task {
             defer { thinking = false }
-            do {
-                let reply = try await api.sendChat(text)
-                messages.append(ChatMessage(role: .mike, text: reply))
-            } catch {
+            switch providers.provider {
+            case .groq:
+                guard let key = KeychainStore.load(KeychainStore.groqKey) else {
+                    messages.append(ChatMessage(role: .mike,
+                        text: "No Groq key saved on this phone. Add it on the setup screen or in Settings - it never goes through this chat."))
+                    return
+                }
+                do {
+                    var history = [GroqClient.Msg(role: "system",
+                        content: "You are Mike, a personal assistant. Be concise, and honest about what you can't do.")]
+                    history += messages.suffix(20).map {
+                        GroqClient.Msg(role: $0.role == .user ? "user" : "assistant", content: $0.text)
+                    }
+                    let reply = try await GroqClient.chat(key: key, history: history)
+                    messages.append(ChatMessage(role: .mike, text: reply))
+                } catch {
+                    messages.append(ChatMessage(role: .mike, text: error.localizedDescription))
+                }
+            case .backend:
+                do {
+                    let reply = try await api.sendChat(text)
+                    messages.append(ChatMessage(role: .mike, text: reply))
+                } catch {
+                    messages.append(ChatMessage(role: .mike,
+                        text: "Can't reach the backend you set. Check the URL and token in Settings, and that the core is running."))
+                }
+            case .local:
                 messages.append(ChatMessage(role: .mike,
-                    text: "Can't reach my core on your PC right now. Check the tunnel URL in Settings and that the core is running."))
+                    text: "The on-device model isn't wired into this build yet - I won't fake a reply before the runtime lands. Switch provider in Settings if you want to chat right now."))
+            case nil:
+                messages.append(ChatMessage(role: .mike,
+                    text: "Setup isn't finished yet. Pick where Mike thinks on the setup screen."))
             }
         }
     }
 }
 
-#Preview { ChatView().environmentObject(APIClient()) }
+#Preview { ChatView().environmentObject(APIClient()).environmentObject(ProviderStore()) }
