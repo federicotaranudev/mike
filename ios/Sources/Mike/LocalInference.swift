@@ -13,9 +13,9 @@ final class LocalEngine {
 
     func reply(to text: String, modelPath: String) async throws -> String {
         if engine == nil {
-            let config = EngineConfig(modelPath: modelPath, backend: .gpu,
-                                      cacheDir: NSTemporaryDirectory())
-            let e = try Engine(engineConfig: config)
+            let config = try EngineConfig(modelPath: modelPath, backend: .gpu,
+                                          cacheDir: NSTemporaryDirectory())
+            let e = Engine(engineConfig: config)
             // Engine is an actor; heavy model load happens inside initialize().
             try await e.initialize()
             let c = try await e.createConversation()
@@ -26,7 +26,7 @@ final class LocalEngine {
             throw NSError(domain: "Mike", code: 0, userInfo: [NSLocalizedDescriptionKey: "Local engine failed to start."])
         }
         let response = try await conversation.sendMessage(Message(text))
-        return response.toString
+        return try response.toString
     }
 }
 #endif
