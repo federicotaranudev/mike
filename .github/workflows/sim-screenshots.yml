@@ -68,8 +68,21 @@ jobs:
             xcrun simctl uninstall booted dev.federicotaranu.mike || true
             xcrun simctl install booted "$APP"
             xcrun simctl launch booted dev.federicotaranu.mike
-            sleep 8
+            sleep 10
             xcrun simctl io booted screenshot "shots/$TAB.png"
+            # A tiny PNG is a blank/white screen - capture real diagnostics and retry once.
+            SZ=$(stat -f%z "shots/$TAB.png")
+            if [ "$SZ" -lt 30000 ]; then
+              echo "BLANK shot for $TAB ($SZ bytes) - capturing logs and retrying"
+              xcrun simctl spawn booted log show --last 3m --style compact --predicate 'process CONTAINS "MikeSim"' 2>/dev/null | tail -40 || true
+              ls -la ~/Library/Logs/DiagnosticReports/ 2>/dev/null | tail -5 || true
+              xcrun simctl terminate booted dev.federicotaranu.mike || true
+              sleep 2
+              xcrun simctl launch booted dev.federicotaranu.mike
+              sleep 12
+              xcrun simctl io booted screenshot "shots/$TAB.png"
+              echo "retry shot $TAB: $(stat -f%z "shots/$TAB.png") bytes"
+            fi
             xcrun simctl terminate booted dev.federicotaranu.mike || true
             echo "shot $TAB"
           done
