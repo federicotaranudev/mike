@@ -1,6 +1,7 @@
 name: Build Mike IPA
 
 on:
+  push: # TEMPORARY one-shot trigger, remove after build
   workflow_dispatch:
 
 permissions:
@@ -39,6 +40,6 @@ jobs:
       - name: Publish release with the IPA
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.${{ github.run_number }}
-          name: Mike iPhone v0.2.${{ github.run_number }}
+          tag_name: v0.3.0
+          name: Mike iPhone v0.3.0 - tool calling, fixed Approvals/Activity, model download
           files: ios/xtool/Mike-iPhone.ipa
