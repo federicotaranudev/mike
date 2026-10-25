@@ -41,14 +41,14 @@ struct SettingsView: View {
                     Section("On-device model") {
                         switch models.state {
                         case .notDownloaded:
-                            Text("Gemma 4 E2B (Q4_0, 2.8 GB). Downloads from Hugging Face over HTTPS - no account needed. Keep Mike open while it downloads.")
+                            Text("Gemma 4 E2B (2.0 GB, runs on the iPhone GPU). Downloads from Hugging Face over HTTPS - no account needed. Keep Mike open while it downloads. Heads up: the runtime that RUNS the model is still being integrated, so this file cannot chat yet, and 2 GB on an iPhone 13 may be tight - it is untested on your device. Only download if that is OK.")
                                 .font(.footnote).foregroundStyle(.secondary)
                             Button("Download model") { models.startDownload() }
                         case .downloading(let p):
                             ProgressView(value: p) { Text("Downloading model - \(Int(p * 100))%") }
                             Button("Cancel", role: .destructive) { models.cancelDownload() }
                         case .downloaded(let bytes):
-                            Text("Gemma 4 E2B is on this phone (\(String(format: "%.1f", Double(bytes) / 1e9)) GB). The runtime that runs it (llama.cpp) is not in this build yet - chat will say so until it lands, not fake replies.")
+                            Text("Gemma 4 E2B is on this phone (\(String(format: "%.1f", Double(bytes) / 1e9)) GB). The LiteRT-LM runtime that runs it is still being integrated - chat will keep saying so until it lands, not fake replies.")
                                 .font(.footnote).foregroundStyle(.secondary)
                             Button("Delete model", role: .destructive) { models.deleteModel() }
                         case .failed(let why):
