@@ -60,6 +60,10 @@ jobs:
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
           "$HOME/.maestro/bin/maestro" --version
       - name: Run keyboard dismissal flow
+        env:
+          # Cold simulator + XCTest driver boot can exceed Maestro's default
+          # startup window (flake seen in run 40229545338).
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "240000"
         run: |
           set -euo pipefail
           export PATH="$HOME/.maestro/bin:$PATH"
@@ -88,5 +92,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create sim-evidence --title "Simulator screenshots (UI evidence)" --notes "Automated simulator captures for review - not a Mike release. Safe to delete." --latest=false || true
-          gh release upload sim-evidence kbshots/*.png --clobber
+          set -euo pipefail
+          if compgen -G "kbshots/*.png" > /dev/null; then
+            gh release create sim-evidence --title "Simulator screenshots (UI evidence)" --notes "Automated simulator captures for review - not a Mike release. Safe to delete." --latest=false || true
+            gh release upload sim-evidence kbshots/*.png --clobber
+          else
+            echo "no kb screenshots to publish (flow failed before capture)"
+          fi
