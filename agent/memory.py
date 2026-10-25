@@ -7,6 +7,7 @@ iPhone app always reads real state, never a simulation.
 """
 from __future__ import annotations
 import sqlite3
+from pathlib import Path
 import time
 
 SCHEMA = """
@@ -39,6 +40,10 @@ CREATE TABLE IF NOT EXISTS kv (
 
 class Memory:
     def __init__(self, path: str):
+        if path != ":memory:":
+            parent = Path(path).expanduser().parent
+            if str(parent) not in ("", "."):
+                parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.executescript(SCHEMA)
 
