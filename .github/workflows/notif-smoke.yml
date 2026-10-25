@@ -1,0 +1,89 @@
+name: notif-smoke
+on:
+  workflow_dispatch:
+
+# Notification execution acceptance on the simulator: schedule a real reminder
+# through the SAME code an approved schedule_reminder uses, let the app die,
+# wait past the fire time, relaunch and prove the system delivered it.
+jobs:
+  notif:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile variant for the iOS simulator
+        run: |
+          set -euo pipefail
+          cd ios/Sources/Mike
+          xcrun -sdk iphonesimulator swiftc -parse-as-library \
+            -target arm64-apple-ios17.0-simulator \
+            -module-name MikeSim \
+            *.swift -o /tmp/MikeSim_NOTIF
+          echo built
+      - name: Bundle and install
+        run: |
+          set -euo pipefail
+          DEV=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          for rt,devs in d.items():
+              if 'iOS' not in rt: continue
+              for dev in devs:
+                  if 'iPhone' in dev['name']:
+                      print(dev['udid']); sys.exit(0)
+          sys.exit('no iPhone sim')")
+          echo "device $DEV"
+          xcrun simctl boot "$DEV" || true
+          APP=/tmp/MikeSim_NOTIF.app
+          mkdir -p "$APP"
+          cp /tmp/MikeSim_NOTIF "$APP/MikeSim"
+          python3 - "$APP/Info.plist" <<'PLIST'
+          import plistlib, sys
+          plistlib.dump({
+            "CFBundleExecutable": "MikeSim",
+            "CFBundleIdentifier": "dev.federicotaranu.mike",
+            "CFBundleName": "Mike",
+            "CFBundleDisplayName": "Mike",
+            "CFBundlePackageType": "APPL",
+            "CFBundleShortVersionString": "0.4",
+            "CFBundleVersion": "1",
+            "MinimumOSVersion": "17.0",
+            "UIDeviceFamily": [1],
+            "CFBundleSupportedPlatforms": ["iPhoneSimulator"],
+            "UILaunchScreen": {},
+          }, open(sys.argv[1], "wb"))
+          PLIST
+          codesign -s - --timestamp=none "$APP" || true
+          xcrun simctl uninstall booted dev.federicotaranu.mike || true
+          xcrun simctl install booted "$APP"
+      - name: Install Maestro (UI driver)
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Schedule real reminder (grants notification permission)
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "240000"
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.maestro/bin:$PATH"
+          set +e
+          maestro test ios/UITest/notif-flow.yaml 2>&1 | grep --line-buffered -E "NOTIF_|COMPLETED|FAILED|Error" | tee /tmp/notif-schedule.log
+          set -e
+          { echo "### Notification smoke - scheduling"; echo '```'; cat /tmp/notif-schedule.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          grep -q "NOTIF_PENDING count=1" /tmp/notif-schedule.log || { echo "scheduling not confirmed"; exit 1; }
+      - name: Wait for fire time, relaunch, verify delivery
+        run: |
+          set -euo pipefail
+          echo "waiting 80s for the reminder to fire while the app is dead..."
+          sleep 80
+          set +e
+          xcrun simctl launch --console booted dev.federicotaranu.mike -NotifCheck 2>&1 | grep --line-buffered -E "NOTIF_|error|Error" | tee /tmp/notif-check.log
+          set -e
+          { echo "### Notification smoke - delivery"; echo '```'; cat /tmp/notif-check.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if grep -q "NOTIF_DELIVERED count=[1-9]" /tmp/notif-check.log; then
+            echo "NOTIF-SMOKE: DELIVERED (scheduled via approved-reminder path, fired with app dead)" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "NOTIF-SMOKE: NOT DELIVERED" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
