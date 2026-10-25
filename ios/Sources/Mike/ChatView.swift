@@ -16,6 +16,7 @@ struct ChatView: View {
     #endif
     @State private var draft = ""
     @State private var thinking = false
+    @FocusState private var composerFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -32,6 +33,7 @@ struct ChatView: View {
                         }
                         .padding()
                     }
+                    .onTapGesture { composerFocused = false }
                     .onChange(of: messages.count) { _, _ in
                         // Only auto-scroll once a conversation is going; on a
                         // fresh screen this used to shove the greeting up
@@ -41,16 +43,31 @@ struct ChatView: View {
                         }
                     }
                 }
-                HStack(spacing: 8) {
+                // iMessage-style composer: one translucent capsule holding the
+                // field and a round send button. No placeholder buttons - only
+                // controls that do something real are shown.
+                HStack(spacing: 6) {
                     TextField("Message Mike...", text: $draft, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
+                        .focused($composerFocused)
                         .lineLimit(1...4)
+                        .padding(.leading, 14)
                     Button(action: send) {
-                        Image(systemName: "arrow.up.circle.fill").font(.title2)
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                        ? Color.gray.opacity(0.5) : Color.accentColor)
+                            .clipShape(Circle())
                     }
                     .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || thinking)
+                    .padding(.trailing, 6)
                 }
-                .padding()
+                .padding(.vertical, 6)
+                .background(Color(.secondarySystemBackground).opacity(0.9))
+                .clipShape(Capsule())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
             }
             .navigationTitle("Mike")
             .navigationBarTitleDisplayMode(.inline)
