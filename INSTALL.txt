@@ -1,0 +1,18 @@
+MIKE BACKEND - PC setup (tested on Linux, Python 3.10+)
+
+  sudo apt update && sudo apt install -y python3 python3-venv git
+  python3 -m venv .venv && source .venv/bin/activate
+  pip install -r requirements.txt
+  cp .env.example .env        # set MIKE_TOKEN (openssl rand -hex 24); leave GROQ_API_KEY empty
+  python3 -m pytest tests     # 11 tests should pass
+  DB_PATH=./mike.db uvicorn agent.api:app --host 127.0.0.1 --port 8787
+
+Notes:
+- .env is loaded automatically on start (python-dotenv). Token required on
+  every endpoint once set: curl -H "Authorization: Bearer $MIKE_TOKEN" ...
+- Binds to 127.0.0.1 only. Set MIKE_TOKEN BEFORE exposing via any tunnel.
+- Without GROQ_API_KEY, chat answers that no model is configured. It never
+  calls a paid API and never switches providers on its own.
+- Dockerfile/docker-compose.yml included but that route is UNTESTED.
+- apt commands are standard Ubuntu but verified by documentation, not run in
+  the build environment; everything from venv onward WAS run and passed.
