@@ -73,6 +73,8 @@ jobs:
           cp shots/*.png docs/screenshots/
           git config user.name "mike-ci"
           git config user.email "ci@localhost"
+          git fetch origin main
+          git switch -C main origin/main
           git add docs/screenshots
           git commit -m "simulator screenshots: chat, approvals, activity (fresh install, no core configured)" || echo "nothing to commit"
-          git push
+          git push origin HEAD:main
