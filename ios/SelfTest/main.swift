@@ -86,6 +86,63 @@ check("provider persisted", UserDefaults.standard.string(forKey: "mike.provider"
 check("reloaded provider", ProviderStore().provider == .groq)
 UserDefaults.standard.removeObject(forKey: "mike.provider")
 
+
+// 7. Tool calling: argument validation, approval gating, loop bounds
+let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+let agentStore = AgentStore(directory: tmp)
+func mkCall(_ name: String, _ args: String) -> Tooling.ToolCall {
+    Tooling.ToolCall(id: "call_1", type: "function", function: .init(name: name, arguments: args))
+}
+check("unknown tool rejected", (try? Tooling.validatedArgs(mkCall("delete_everything", "{}"))) == nil)
+check("empty remember rejected", (try? Tooling.validatedArgs(mkCall("remember", "{\"text\":\"\"}"))) == nil)
+check("valid remember accepted", (try? Tooling.validatedArgs(mkCall("remember", "{\"text\":\"Fred likes espressos\"}"))) != nil)
+check("past reminder rejected", (try? Tooling.validatedArgs(mkCall("schedule_reminder", "{\"text\":\"x\",\"at\":\"2020-01-01T10:00:00+02:00\"}"))) == nil)
+check("garbage date rejected", (try? Tooling.validatedArgs(mkCall("schedule_reminder", "{\"text\":\"x\",\"at\":\"tomorrow-ish\"}"))) == nil)
+check("future reminder accepted", (try? Tooling.validatedArgs(mkCall("schedule_reminder", "{\"text\":\"x\",\"at\":\"2100-01-01T10:00:00+02:00\"}"))) != nil)
+check("broken JSON rejected", (try? Tooling.validatedArgs(mkCall("recall", "not json"))) == nil)
+
+// Write tools never execute without approval
+let before = agentStore.memory.count
+let res = Tooling.run(mkCall("remember", "{\"text\":\"Fred likes espressos\"}"), store: agentStore)
+check("write tool returns queued-for-approval message", res.contains("approval"))
+check("write tool queued one approval", agentStore.approvals.filter { $0.status == .pending }.count == 1)
+check("write NOT executed before approval", agentStore.memory.count == before)
+let queued = agentStore.approvals[0]
+// Denial path
+if let denied = agentStore.resolve(queued.id, approved: false) {
+    check("denied approval marked denied", denied.status == .denied)
+} else { check("denial resolves pending approval", false) }
+check("denied write still not executed", agentStore.memory.isEmpty)
+// Approval path executes exactly the stored action
+let res2 = Tooling.run(mkCall("remember", "{\"text\":\"Fred likes espressos\"}"), store: agentStore)
+_ = res2
+let queued2 = agentStore.approvals[0]
+if let approved = agentStore.resolve(queued2.id, approved: true) {
+    Tooling.executeApproved(approved, store: agentStore)
+}
+check("approved remember executed", agentStore.memory.first == "Fred likes espressos")
+// Read-only recall runs immediately
+let recallRes = Tooling.run(mkCall("recall", "{\"query\":\"espresso\"}"), store: agentStore)
+check("recall finds approved memory", recallRes.contains("espressos"))
+check("recall of unknown term is honest", Tooling.run(mkCall("recall", "{\"query\":\"zzz-nothing\"}"), store: agentStore).contains("Nothing"))
+// get_current_time runs immediately
+check("get_current_time runs read-only", Tooling.run(mkCall("get_current_time", "{}"), store: agentStore).contains("Current device time"))
+// Bad args never crash the loop - model gets a rejection string
+check("bad args return rejection text", Tooling.run(mkCall("remember", "{}"), store: agentStore).contains("rejected"))
+
+// 8. Groq tool_calls response parses (content may be null)
+let mockResp = """
+{"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_9","type":"function","function":{"name":"get_current_time","arguments":"{}"}}]}}]}
+"""
+let parsed = try? JSONDecoder().decode(Tooling.ToolChatResponse.self, from: Data(mockResp.utf8))
+check("tool_calls response parses", parsed?.choices.first?.message.tool_calls?.first?.function.name == "get_current_time")
+check("null content tolerated", parsed?.choices.first?.message.content == nil)
+
+// 9. Model download source is fixed, https, Hugging Face only
+check("model url is huggingface https", ModelManager.modelURL.scheme == "https" && ModelManager.modelURL.host == "huggingface.co")
+check("model size constant matches the verified artifact", ModelManager.expectedBytes == 2_841_481_184)
+
 let verdict = failures == 0 ? "ALL PASS" : "\(failures) FAILURES"
 print(verdict)
 lines.append(verdict)
