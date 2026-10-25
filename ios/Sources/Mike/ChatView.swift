@@ -3,7 +3,7 @@ import SwiftUI
 struct ChatView: View {
     @EnvironmentObject var api: APIClient
     @State private var messages: [ChatMessage] = [
-        ChatMessage(role: .mike, text: "Hey, I'm Mike. Ask me something, or tell me what to keep an eye on.")
+        ChatMessage(role: .mike, text: "Hey, I'm Mike. Ask me something, or tell me what to remember. Watching things on my own isn't built yet - when it is, I'll tell you here.")
     ]
     @State private var draft = ""
     @State private var thinking = false
