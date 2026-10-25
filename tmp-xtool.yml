@@ -1,0 +1,4 @@
+version: 1
+bundleID: dev.federicotaranu.mike
+product: Mike
+infoPath: Info.plist
