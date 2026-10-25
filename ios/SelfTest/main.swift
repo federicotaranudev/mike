@@ -170,6 +170,20 @@ if let next = trig.nextTriggerDate() {
     check("notification trigger produced a fire date", false)
 }
 
+// 13. Proactive dedup: unchanged signals stay silent, new signals speak
+let suite = UserDefaults(suiteName: "mike-selftest-proactive")!
+suite.removePersistentDomain(forName: "mike-selftest-proactive")
+let d1 = ProactiveEngine.signalDigest(approvalIDs: ["a1"], reminderIDs: ["r1"])
+check("digest deterministic for same signals", d1 == ProactiveEngine.signalDigest(approvalIDs: ["a1"], reminderIDs: ["r1"]))
+check("digest order-independent", ProactiveEngine.signalDigest(approvalIDs: ["b", "a"], reminderIDs: ["2", "1"]) == ProactiveEngine.signalDigest(approvalIDs: ["a", "b"], reminderIDs: ["1", "2"]))
+check("new approval changes digest", d1 != ProactiveEngine.signalDigest(approvalIDs: ["a1", "a2"], reminderIDs: ["r1"]))
+check("no signals means silence", ProactiveEngine.shouldSpeak(currentDigest: ProactiveEngine.signalDigest(approvalIDs: [], reminderIDs: []), defaults: suite) == false)
+check("first sight of signals speaks", ProactiveEngine.shouldSpeak(currentDigest: d1, defaults: suite) == true)
+ProactiveEngine.markSpoken(d1, defaults: suite)
+check("relaunch with unchanged signals stays silent", ProactiveEngine.shouldSpeak(currentDigest: d1, defaults: suite) == false)
+let d2 = ProactiveEngine.signalDigest(approvalIDs: ["a1"], reminderIDs: ["r1", "r2"])
+check("new reminder speaks again", ProactiveEngine.shouldSpeak(currentDigest: d2, defaults: suite) == true)
+
 let verdict = failures == 0 ? "ALL PASS" : "\(failures) FAILURES"
 print(verdict)
 lines.append(verdict)
