@@ -48,19 +48,27 @@ enum RuntimeSmoke {
         guard let i = args.firstIndex(of: "-RuntimeSmoke"), args.count > i + 1 else { return }
         let path = args[i + 1]
         let forceCPU = args.contains("cpu")
+        NSLog("SMOKE_START path=\(path) backend=\(forceCPU ? "cpu" : "gpu") bundled=\(LocalInference.runtimeBundled)")
         print("SMOKE_START path=\(path) backend=\(forceCPU ? "cpu" : "gpu") bundled=\(LocalInference.runtimeBundled)")
+        fflush(stdout)
         DispatchQueue.global().asyncAfter(deadline: .now() + 600) {
+            NSLog("SMOKE_RESULT TIMEOUT after 600s")
             print("SMOKE_RESULT TIMEOUT after 600s")
+            fflush(stdout)
             exit(2)
         }
         Task {
             do {
                 let out = try await LocalInference.smokeReply(
                     prompt: "Reply with the single word OK.", modelPath: path, forceCPU: forceCPU)
+                NSLog("SMOKE_RESULT OK \(out)")
                 print("SMOKE_RESULT OK \(out)")
+                fflush(stdout)
                 exit(0)
             } catch {
+                NSLog("SMOKE_RESULT FAIL \(error)")
                 print("SMOKE_RESULT FAIL \(error)")
+                fflush(stdout)
                 exit(1)
             }
         }
