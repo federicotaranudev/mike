@@ -14,16 +14,17 @@ enum RuntimeSmoke {
         let args = ProcessInfo.processInfo.arguments
 
         if args.contains("-NotifSmoke") {
-            print("NOTIF_SCHEDULING via Tooling.scheduleNotification")
+            NSLog("NOTIF_SCHEDULING via Tooling.scheduleNotification")
             let store = AgentStore()
             let date = Date().addingTimeInterval(65)
             Tooling.scheduleNotification(text: "Mike CI notification smoke", at: date, store: store)
-            // Auth + add callbacks are async; report pending requests, then exit.
+            // Auth + add callbacks are async; report pending requests via NSLog
+            // (captured from the unified log by the workflow). Keep running so
+            // the UI driver sees a live app; the flow kills us afterwards.
             DispatchQueue.global().asyncAfter(deadline: .now() + 8) {
                 UNUserNotificationCenter.current().getPendingNotificationRequests { reqs in
-                    print("NOTIF_PENDING count=\(reqs.count)")
-                    for r in reqs { print("NOTIF_PENDING_ITEM \(r.content.body)") }
-                    exit(reqs.isEmpty ? 1 : 0)
+                    NSLog("NOTIF_PENDING count=\(reqs.count)")
+                    for r in reqs { NSLog("NOTIF_PENDING_ITEM \(r.content.body)") }
                 }
             }
             return
@@ -32,8 +33,12 @@ enum RuntimeSmoke {
         if args.contains("-NotifCheck") {
             DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
                 UNUserNotificationCenter.current().getDeliveredNotifications { notes in
+                    NSLog("NOTIF_DELIVERED count=\(notes.count)")
                     print("NOTIF_DELIVERED count=\(notes.count)")
-                    for n in notes { print("NOTIF_DELIVERED_ITEM \(n.request.content.body)") }
+                    for n in notes {
+                        NSLog("NOTIF_DELIVERED_ITEM \(n.request.content.body)")
+                        print("NOTIF_DELIVERED_ITEM \(n.request.content.body)")
+                    }
                     exit(notes.isEmpty ? 1 : 0)
                 }
             }
