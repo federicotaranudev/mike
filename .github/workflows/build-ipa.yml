@@ -32,3 +32,13 @@ jobs:
           name: mike-ipa
           path: ios/xtool/*.ipa
           retention-days: 7
+
+      - name: Rename IPA
+        run: mv ios/xtool/*.ipa ios/xtool/Mike-iPhone.ipa
+
+      - name: Publish release with the IPA
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0
+          name: Mike iPhone v0.1.0
+          files: ios/xtool/Mike-iPhone.ipa
