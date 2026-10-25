@@ -15,10 +15,10 @@ final class LocalEngine {
         if engine == nil {
             let config = EngineConfig(modelPath: modelPath, backend: .gpu,
                                       cacheDir: NSTemporaryDirectory())
-            let e = Engine(engineConfig: config)
-            // Heavy: loads the model. Off the cooperative pool so the UI stays responsive.
-            try await Task.detached(priority: .userInitiated) { try e.initialize() }.value
-            let c = try await Task.detached(priority: .userInitiated) { try e.createConversation() }.value
+            let e = try Engine(engineConfig: config)
+            // Engine is an actor; heavy model load happens inside initialize().
+            try await e.initialize()
+            let c = try await e.createConversation()
             engine = e
             conversation = c
         }
