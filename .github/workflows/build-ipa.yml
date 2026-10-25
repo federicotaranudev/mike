@@ -39,6 +39,6 @@ jobs:
       - name: Publish release with the IPA
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.3.0
-          name: Mike iPhone v0.3.0 - tool calling, fixed Approvals/Activity, model download
+          tag_name: v0.4.0
+          name: Mike iPhone v0.4.0 - LiteRT-LM on-device runtime (Gemma 4 E2B)
           files: ios/xtool/Mike-iPhone.ipa
