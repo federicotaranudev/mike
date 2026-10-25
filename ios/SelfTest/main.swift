@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 
 var failures = 0
 var lines: [String] = []
@@ -155,6 +156,19 @@ check("null content tolerated", parsed?.choices.first?.message.content == nil)
 // 9. Model download source is fixed, https, Hugging Face only
 check("model url is huggingface https litertlm", ModelManager.modelURL.scheme == "https" && ModelManager.modelURL.host == "huggingface.co" && ModelManager.modelURL.path.hasSuffix(".litertlm"))
 check("model size constant matches the verified artifact", ModelManager.expectedBytes == 2_008_432_640)
+
+// 12. Notification scheduling math is real: the calendar trigger's next
+// fire date equals the scheduled date (no permission needed to verify this;
+// the actual permission prompt and delivery only exist on device, where
+// failures are logged to Activity).
+let notifTarget = Date().addingTimeInterval(3600)
+let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: notifTarget)
+let trig = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+if let next = trig.nextTriggerDate() {
+    check("notification trigger fires at the scheduled time", abs(next.timeIntervalSince(notifTarget)) < 2)
+} else {
+    check("notification trigger produced a fire date", false)
+}
 
 let verdict = failures == 0 ? "ALL PASS" : "\(failures) FAILURES"
 print(verdict)
