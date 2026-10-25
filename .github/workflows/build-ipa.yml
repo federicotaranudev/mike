@@ -52,7 +52,7 @@ jobs:
           FW=/tmp/xcf/CLiteRTLM.xcframework/ios-arm64/CLiteRTLM.framework
           # 1) LiteRTLM Swift module as a dylib carried inside the app bundle
           cd /tmp/litertlm/swift
-          xcrun -sdk iphoneos swiftc -parse-as-library             -O -target arm64-apple-ios17.0 -sdk "$SDK"             -module-name LiteRTLM -emit-library -emit-module             -emit-module-path /tmp/litertlm/LiteRTLM.swiftmodule             -install_name @rpath/libLiteRTLM.dylib             -Xcc -fmodule-map-file="$FW/Modules/module.modulemap"             -F /tmp/xcf/CLiteRTLM.xcframework/ios-arm64 -framework CLiteRTLM             $(ls *.swift | grep -v Tests)             -o /tmp/litertlm/libLiteRTLM.dylib
+          xcrun -sdk iphoneos swiftc -parse-as-library             -O -target arm64-apple-ios17.0 -sdk "$SDK"             -module-name LiteRTLM -emit-library -emit-module             -emit-module-path /tmp/litertlm/LiteRTLM.swiftmodule             -Xlinker -install_name -Xlinker @rpath/libLiteRTLM.dylib             -Xcc -fmodule-map-file="$FW/Modules/module.modulemap"             -F /tmp/xcf/CLiteRTLM.xcframework/ios-arm64 -framework CLiteRTLM             $(ls *.swift | grep -v Tests)             -o /tmp/litertlm/libLiteRTLM.dylib
           # 2) Mike executable against the CURRENT SDK (this is where the
           #    glassEffect code path gets its real production linkage)
           cd "$GITHUB_WORKSPACE"
