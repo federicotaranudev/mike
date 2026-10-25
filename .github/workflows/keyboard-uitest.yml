@@ -2,6 +2,9 @@ name: keyboard-uitest
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   keyboard:
     runs-on: macos-latest
