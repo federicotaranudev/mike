@@ -21,7 +21,7 @@ settings stay, and Mike never switches on its own.
 
 | Mode | What it means | Status in v0.2 |
 | --- | --- | --- |
-| **Groq API** | Chat replies from Groq's API, direct from the phone. You paste your own key into the app, privately. | **Chat works.** The key is stored in the iPhone Keychain and used only in requests the app makes to api.groq.com. If Groq returns an error (for example a spent quota) Mike shows it - it never switches providers on its own. Memory, tools and approvals are not wired in this mode yet. |
+| **Groq API** | Chat replies from Groq's API, direct from the phone. You paste your own key into the app, privately. | **Chat implemented, in device testing.** The key is stored in the iPhone Keychain and used only in requests the app makes to api.groq.com. If Groq returns an error (for example a spent quota) Mike shows it - it never switches providers on its own. Memory, tools and approvals are not wired in this mode yet. |
 | **Your own backend** | Connect to a Mike core you run yourself (HTTPS URL + access token). | **Works.** HTTPS is required; the token is stored in the Keychain. Approvals and Activity screens read from your core. |
 | **On this iPhone** | A small on-device model (candidate: Gemma 4 E2B, which has documented tool calling). | **Not yet.** The runtime is still being integrated. If you pick it, Mike says so honestly instead of faking replies, and nothing downloads before you see its exact size. |
 
