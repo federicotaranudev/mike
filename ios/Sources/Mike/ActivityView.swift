@@ -4,13 +4,17 @@ struct ActivityView: View {
     @EnvironmentObject var api: APIClient
     @State private var entries: [ActivityEntry] = []
     @State private var showStopConfirm = false
+    @State private var loadFailed = false
 
     var body: some View {
         NavigationStack {
             List {
-                if entries.isEmpty {
+                if loadFailed && entries.isEmpty {
+                    ContentUnavailableView("Can't reach Mike's core", systemImage: "exclamationmark.triangle",
+                        description: Text("Offline - recent activity is unknown, not necessarily empty. Pull to retry once the core is up."))
+                } else if entries.isEmpty {
                     ContentUnavailableView("No activity yet", systemImage: "list.bullet.rectangle",
-                        description: Text("Everything Mike does lands here."))
+                        description: Text("Connected to the core - this is a real empty log. Everything Mike does lands here."))
                 } else {
                     ForEach(entries) { entry in
                         VStack(alignment: .leading, spacing: 2) {
@@ -41,7 +45,12 @@ struct ActivityView: View {
     }
 
     private func reload() async {
-        entries = (try? await api.activity()) ?? []
+        do {
+            entries = try await api.activity()
+            loadFailed = false
+        } catch {
+            loadFailed = true
+        }
     }
 }
 
