@@ -28,6 +28,7 @@ jobs:
           build_variant SETTINGS -D SIM_TAB_SETTINGS -D SIM_FORCE_LOCAL
           build_variant ONBOARDING -D SIM_ONBOARDING
           build_variant LOCALCHAT -D SIM_FORCE_LOCAL
+          build_variant SETTINGS_BUNDLED -D SIM_TAB_SETTINGS -D SIM_FORCE_LOCAL -D SIM_RUNTIME_BUNDLED
       - name: Bundle and screenshot each variant
         run: |
           set -euo pipefail
@@ -44,7 +45,7 @@ jobs:
           sys.exit('no iPhone sim')")
           echo "device $DEV"
           xcrun simctl boot "$DEV" || true
-          for TAB in CHAT APPROVALS ACTIVITY SETTINGS ONBOARDING LOCALCHAT; do
+          for TAB in CHAT APPROVALS ACTIVITY SETTINGS ONBOARDING LOCALCHAT SETTINGS_BUNDLED; do
             APP="/tmp/MikeSim_$TAB.app"
             mkdir -p "$APP"
             cp "/tmp/MikeSim_$TAB" "$APP/MikeSim"
@@ -99,4 +100,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create sim-evidence --title "Simulator screenshots (UI evidence)" --notes "Automated simulator captures for review - not a Mike release. Safe to delete." --latest=false || true
-          gh release upload sim-evidence shots/CHAT.png shots/APPROVALS.png shots/ACTIVITY.png shots/SETTINGS.png shots/ONBOARDING.png shots/LOCALCHAT.png --clobber
+          gh release upload sim-evidence shots/CHAT.png shots/APPROVALS.png shots/ACTIVITY.png shots/SETTINGS.png shots/ONBOARDING.png shots/LOCALCHAT.png shots/SETTINGS_BUNDLED.png --clobber
