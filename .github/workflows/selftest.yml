@@ -1,7 +1,6 @@
 name: selftest
 on:
   workflow_dispatch:
-  push:  # TEMPORARY: run tests for the tool-calling push; remove after green
 
 permissions:
   contents: read
