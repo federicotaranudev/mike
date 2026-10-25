@@ -72,7 +72,13 @@ final class ProviderStore: ObservableObject {
         #elseif SIM_FORCE_GROQ
         provider = .groq
         #else
-        if let s = UserDefaults.standard.string(forKey: "mike.provider") {
+        // CI-only hook (like RuntimeSmoke's launch arguments): seeds the local
+        // provider so acceptance flows reach the main UI on a fresh simulator
+        // without tapping through onboarding. Exact-argument gated, never set
+        // in normal launches. Not a user feature.
+        if ProcessInfo.processInfo.arguments.contains("-SeedLocalProvider") {
+            provider = .local
+        } else if let s = UserDefaults.standard.string(forKey: "mike.provider") {
             provider = InferenceProvider(rawValue: s)
         }
         #endif
