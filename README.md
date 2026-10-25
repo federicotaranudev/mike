@@ -52,7 +52,7 @@ been tested yet, prefer the commands above for now.
 No unbounded robot intelligence. Three real mechanisms:
 
 1. **It learns you.** Your corrections and approvals become memory rows it reads back next time.
-2. **It proposes improvements to its own code.** It drafts a change on a git branch, runs the test suite, and shows you the diff. Nothing applies without your yes. Today the test run happens in the server process itself, not in an isolated sandbox - treat self-edit as a power feature and read each diff before approving.
+2. **It will propose improvements to its own code - once it is safe.** Planned: draft a change on a git branch, run tests inside a networkless throwaway container, show you the diff, apply only with your yes. Until that isolated container exists, self-edit execution is DISABLED on purpose: model-generated code never runs on your PC.
 3. **It stays in its lane.** Messaging anyone, spending, posting, or new permissions always require approval. Those rules live in `agent/guardrails.py`, which the self-edit loop is forbidden to touch.
 
 ## Architecture
@@ -99,9 +99,9 @@ The API listens on `127.0.0.1:8787` and is meant to be reached only through a Cl
 
 ## Status
 
-**Implemented (v0.1):** single-provider model calls with fail-closed quota, memory with corrections, guardrails with protected files, approval API, self-edit proposal loop (branch + tests + diff, approval required), test suite, iPhone app source (compiles on macOS runners; not yet verified running on a device).
+**Implemented (v0.1):** single-provider model calls with fail-closed quota, memory with corrections, guardrails with protected files, approval API, test suite, iPhone app source (compiles on macOS runners; not yet verified running on a device).
 
-**Not implemented yet:** goals and real proactive jobs (the scheduler starts with zero jobs on purpose, so Mike never pings you with placeholder noise), isolated sandbox execution for self-edits, Cloudflare Tunnel setup, voice notes via Groq Whisper.
+**Not implemented yet:** self-edit execution (disabled fail-closed until a real isolated sandbox exists; only read-only diff helpers ship today), goals and real proactive jobs (the scheduler starts with zero jobs on purpose, so Mike never pings you with placeholder noise), Cloudflare Tunnel setup, voice notes via Groq Whisper.
 
 ## License
 
