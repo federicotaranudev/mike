@@ -16,7 +16,7 @@ jobs:
           xcrun -sdk iphonesimulator swiftc \
             -target arm64-apple-ios17.0-simulator \
             -module-name MikeSelfTest \
-            ios/Sources/Mike/Provider.swift ios/Sources/Mike/APIClient.swift ios/Sources/Mike/GroqClient.swift ios/Sources/Mike/Models.swift ios/Sources/Mike/AgentStore.swift ios/Sources/Mike/ModelManager.swift ios/Sources/Mike/Tooling.swift ios/Sources/Mike/AgentLoop.swift \
+            ios/Sources/Mike/Provider.swift ios/Sources/Mike/APIClient.swift ios/Sources/Mike/GroqClient.swift ios/Sources/Mike/Models.swift ios/Sources/Mike/AgentStore.swift ios/Sources/Mike/ModelManager.swift ios/Sources/Mike/Tooling.swift ios/Sources/Mike/AgentLoop.swift ios/Sources/Mike/LocalInference.swift ios/Sources/Mike/ProactiveEngine.swift \
             ios/SelfTest/main.swift -o /tmp/MikeSelfTest
           echo compiled
       - name: Run on simulator
