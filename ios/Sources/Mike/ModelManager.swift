@@ -1,10 +1,11 @@
 import Foundation
 import Combine
 
-/// Downloads the on-device model file (Gemma 4 E2B, Q4_0 GGUF) from Hugging
-/// Face over HTTPS. Anonymous, no account or key needed - the repo is public.
-/// IMPORTANT honest state: this downloads the WEIGHTS only. The runtime that
-/// runs them (llama.cpp) is not in this build yet; the UI says so plainly.
+/// Downloads the on-device model file (Gemma 4 E2B, LiteRT-LM .litertlm) from
+/// Hugging Face over HTTPS. Anonymous, no account or key needed - the repo is
+/// public. IMPORTANT honest state: this downloads the WEIGHTS only. The
+/// runtime that runs them (LiteRT-LM, Metal GPU) is being integrated and is
+/// not in this build yet; the UI says so plainly.
 final class ModelManager: NSObject, ObservableObject {
     enum State: Equatable {
         case notDownloaded
@@ -15,9 +16,9 @@ final class ModelManager: NSObject, ObservableObject {
 
     @Published private(set) var state: State = .notDownloaded
 
-    static let modelFileName = "gemma-4-E2B-it-Q4_0.gguf"
-    static let expectedBytes: Int64 = 2_841_481_184
-    static let modelURL = URL(string: "https://huggingface.co/ggml-org/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_0.gguf")!
+    static let modelFileName = "gemma-4-E2B-it-gpu.litertlm"
+    static let expectedBytes: Int64 = 2_008_432_640
+    static let modelURL = URL(string: "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-gpu.litertlm")!
 
     private var session: URLSession?
     private var task: URLSessionDownloadTask?
@@ -43,8 +44,8 @@ final class ModelManager: NSObject, ObservableObject {
 
     func startDownload() {
         // Need the file plus breathing room; refuse early instead of filling the phone.
-        guard Self.freeBytes() > Self.expectedBytes + 600_000_000 else {
-            state = .failed("Not enough free space. The model needs about 3.4 GB free; delete it later from here if you change your mind.")
+        guard Self.freeBytes() > Self.expectedBytes + 600_000_000 else  // file + working room {
+            state = .failed("Not enough free space. The model needs about 2.6 GB free; delete it later from here if you change your mind.")
             return
         }
         state = .downloading(progress: 0)
