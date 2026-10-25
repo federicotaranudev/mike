@@ -6,7 +6,7 @@
 
 **A personal AI agent that lives on your iPhone. Free, honest about what it does, and yours.**
 
-![status](https://img.shields.io/badge/status-v0.2%20early-orange)
+![status](https://img.shields.io/badge/status-v0.4.1%20early-orange)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 ![cost](https://img.shields.io/badge/app-0%E2%82%AC%20free%20forever-brightgreen)
 
