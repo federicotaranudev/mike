@@ -1,20 +1,19 @@
 import Foundation
 
-/// Talks to the agent core on the user's own PC over the tunnel URL the user
-/// sets in Settings. No third-party servers: the phone talks to his PC only.
+/// Talks to a backend the user configured in Settings: a Mike core they run
+/// themselves. The URL is not a secret (UserDefaults); the token lives in the
+/// iPhone Keychain only.
 final class APIClient: ObservableObject {
     @Published var baseURL: URL? {
         didSet { UserDefaults.standard.set(baseURL?.absoluteString, forKey: "mike.baseURL") }
     }
-    /// Shared secret the core requires once it leaves 127.0.0.1 (MIKE_TOKEN).
-    @Published var token: String {
-        didSet { UserDefaults.standard.set(token, forKey: "mike.token") }
-    }
+    /// Shared secret the backend requires once it leaves 127.0.0.1. Read from
+    /// the Keychain on every request; never written to UserDefaults or logs.
+    private var token: String { KeychainStore.load(KeychainStore.backendToken) ?? "" }
     @Published var lastError: String?
 
     init() {
         if let s = UserDefaults.standard.string(forKey: "mike.baseURL") { baseURL = URL(string: s) }
-        token = UserDefaults.standard.string(forKey: "mike.token") ?? ""
     }
 
     private func request(_ path: String, method: String = "GET", body: Data? = nil) async throws -> Data {
