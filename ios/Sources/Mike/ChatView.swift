@@ -9,7 +9,7 @@ struct ChatView: View {
     // Screenshot variant: show the honest "not wired yet" state up front.
     @State private var messages: [ChatMessage] = [
         ChatMessage(role: .mike, text: "Hey, I'm Mike. Ask me something, or tell me what to remember. Watching things on my own isn't built yet - when it is, I'll tell you here."),
-        ChatMessage(role: .mike, text: "The on-device model isn't wired into this build yet - I won't fake a reply before the runtime lands. Switch provider in Settings if you want to chat right now.")
+        ChatMessage(role: .mike, text: "The on-device model isn't downloaded yet. Get it in Settings (2.0 GB, runs on the iPhone GPU - first reply loads it, which takes a while, and it's untested on iPhone 13). No download, no fake replies.")
     ]
     #else
     @State private var messages: [ChatMessage] = [
