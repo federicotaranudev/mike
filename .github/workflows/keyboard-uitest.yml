@@ -1,0 +1,92 @@
+name: keyboard-uitest
+on:
+  push: # TEMPORARY one-shot trigger, remove after run
+  workflow_dispatch:
+
+jobs:
+  keyboard:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile chat variant for the iOS simulator
+        run: |
+          set -euo pipefail
+          cd ios/Sources/Mike
+          xcrun -sdk iphonesimulator swiftc -parse-as-library \
+            -target arm64-apple-ios17.0-simulator \
+            -module-name MikeSim -D SIM_FORCE_GROQ \
+            *.swift -o /tmp/MikeSim_CHAT
+          echo built
+      - name: Bundle and install
+        run: |
+          set -euo pipefail
+          DEV=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          for rt,devs in d.items():
+              if 'iOS' not in rt: continue
+              for dev in devs:
+                  if 'iPhone' in dev['name']:
+                      print(dev['udid']); sys.exit(0)
+          sys.exit('no iPhone sim')")
+          echo "device $DEV"
+          xcrun simctl boot "$DEV" || true
+          APP=/tmp/MikeSim_CHAT.app
+          mkdir -p "$APP"
+          cp /tmp/MikeSim_CHAT "$APP/MikeSim"
+          python3 - "$APP/Info.plist" <<'PLIST'
+          import plistlib, sys
+          plistlib.dump({
+            "CFBundleExecutable": "MikeSim",
+            "CFBundleIdentifier": "dev.federicotaranu.mike",
+            "CFBundleName": "Mike",
+            "CFBundleDisplayName": "Mike",
+            "CFBundlePackageType": "APPL",
+            "CFBundleShortVersionString": "0.2",
+            "CFBundleVersion": "1",
+            "MinimumOSVersion": "17.0",
+            "UIDeviceFamily": [1],
+            "CFBundleSupportedPlatforms": ["iPhoneSimulator"],
+            "UILaunchScreen": {},
+          }, open(sys.argv[1], "wb"))
+          PLIST
+          codesign -s - --timestamp=none "$APP" || true
+          xcrun simctl uninstall booted dev.federicotaranu.mike || true
+          xcrun simctl install booted "$APP"
+      - name: Install Maestro (UI driver)
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          "$HOME/.maestro/bin/maestro" --version
+      - name: Run keyboard dismissal flow
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.maestro/bin:$PATH"
+          maestro test ios/UITest/keyboard-flow.yaml 2>&1 | tee /tmp/maestro.log || { tail -5 /tmp/maestro.log; maestro hierarchy > /tmp/hierarchy.txt || true; exit 1; }
+      - name: Collect screenshots
+        run: |
+          set -euo pipefail
+          mkdir -p kbshots
+          find "$HOME/.maestro" -name 'kb*.png' -exec cp {} kbshots/ \; || true
+          ls -la kbshots/
+          [ "$(ls kbshots | wc -l)" -ge 5 ]
+      - name: Pixel-verify dismissal
+        run: |
+          set -euo pipefail
+          pip3 install --quiet pillow
+          python3 ios/UITest/verify_keyboard.py kbshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: keyboard-uitest-shots
+          path: kbshots/
+          retention-days: 30
+      - name: Publish screenshots as release assets (evidence only)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create sim-evidence --title "Simulator screenshots (UI evidence)" --notes "Automated simulator captures for review - not a Mike release. Safe to delete." --latest=false || true
+          gh release upload sim-evidence kbshots/*.png --clobber || true
