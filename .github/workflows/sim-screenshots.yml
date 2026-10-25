@@ -10,6 +10,9 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Record harness SDK (compare with production build SDK)
+        run: |
+          { echo "### Harness toolchain"; echo '```'; xcodebuild -version; echo "iphonesimulator SDK: $(xcrun --sdk iphonesimulator --show-sdk-version)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Compile app for the iOS simulator (6 variants)
         run: |
           set -euo pipefail
