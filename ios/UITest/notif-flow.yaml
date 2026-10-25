@@ -1,11 +1,14 @@
 appId: dev.federicotaranu.mike
 ---
-# Notification execution acceptance: launch with -NotifSmoke (schedules a real
-# reminder through the approved-reminder code path), granting notification
-# permission deterministically. The app prints NOTIF_PENDING and exits; the
-# workflow then waits for delivery and relaunches with -NotifCheck.
+# Notification execution acceptance, part 1: launch with -NotifSmoke (schedules
+# a real reminder through the approved-reminder code path), granting the
+# notification permission deterministically. The app NSLog()s NOTIF_PENDING
+# after ~8s; we wait, then kill it so the reminder fires with the app dead.
 - launchApp:
     appId: dev.federicotaranu.mike
     arguments: "-NotifSmoke"
     permissions:
       notifications: allow
+- waitForAnimationToEnd:
+    timeout: 15000
+- killApp
