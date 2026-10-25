@@ -74,8 +74,9 @@ jobs:
       - name: Pixel-verify dismissal
         run: |
           set -euo pipefail
-          pip3 install --quiet pillow
-          python3 ios/UITest/verify_keyboard.py kbshots
+          python3 -m venv /tmp/kbenv
+          /tmp/kbenv/bin/pip install --quiet pillow
+          /tmp/kbenv/bin/python ios/UITest/verify_keyboard.py kbshots
       - uses: actions/upload-artifact@v4
         if: always()
         with:
