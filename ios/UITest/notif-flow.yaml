@@ -24,6 +24,23 @@ appId: dev.federicotaranu.mike
 - tapOn:
     text: "Allow"
     optional: true
+# The app retries the request every 7s; keep answering late dialogs too.
+- extendedWaitUntil:
+    visible:
+      text: "Allow"
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "Allow"
+    timeout: 8000
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 15000
 - killApp
