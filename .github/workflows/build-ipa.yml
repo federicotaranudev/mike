@@ -15,6 +15,10 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
+      - name: Record build SDK (production glass linkage evidence)
+        run: |
+          { echo "### Build toolchain"; echo '```'; xcodebuild -version; echo "iphoneos SDK: $(xcrun --sdk iphoneos --show-sdk-version)"; echo "swift: $(swift --version 2>&1 | head -1)"; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Install xtool 1.17.0
         run: |
           curl -fL -o xtool.app.zip https://github.com/xtool-org/xtool/releases/download/1.17.0/xtool.app.zip
