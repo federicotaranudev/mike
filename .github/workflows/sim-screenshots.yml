@@ -47,6 +47,14 @@ jobs:
                       print(dev['udid']); sys.exit(0)
           sys.exit('no iPhone sim')")
           echo "device $DEV"
+          RUNTIME=$(xcrun simctl list devices -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          for rt,devs in d.items():
+              for dev in devs:
+                  if dev['udid']=='$DEV': print(rt); sys.exit(0)")
+          echo "simulator runtime: $RUNTIME (Liquid Glass pixels are real only on iOS 26+)"
+          { echo "### Simulator runtime"; echo '```'; echo "$RUNTIME"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           xcrun simctl boot "$DEV" || true
           for TAB in CHAT APPROVALS ACTIVITY SETTINGS ONBOARDING LOCALCHAT SETTINGS_BUNDLED; do
             APP="/tmp/MikeSim_$TAB.app"
