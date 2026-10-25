@@ -1,6 +1,5 @@
 name: keyboard-uitest
 on:
-  push: # TEMPORARY one-shot trigger, remove after run
   workflow_dispatch:
 
 jobs:
