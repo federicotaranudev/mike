@@ -3,15 +3,22 @@ appId: dev.federicotaranu.mike
 # Proactive layer acceptance: after -NotifSmoke scheduled a reminder and the
 # app was killed, a plain relaunch must make Mike speak first about the pending
 # reminder. A SECOND relaunch with unchanged signals must stay silent (durable
-# dedup - no check-in spam).
-- launchApp
+# dedup - no check-in spam). -SeedLocalProvider (CI-only hook) gets past the
+# onboarding gate on a fresh simulator, like a user who finished setup.
+- launchApp:
+    appId: dev.federicotaranu.mike
+    arguments:
+      SeedLocalProvider: "1"
 - extendedWaitUntil:
     visible:
       text: "Welcome back"
     timeout: 20000
 - takeScreenshot: proactive-checkin
 - killApp
-- launchApp
+- launchApp:
+    appId: dev.federicotaranu.mike
+    arguments:
+      SeedLocalProvider: "1"
 - waitForAnimationToEnd:
     timeout: 8000
 - extendedWaitUntil:
