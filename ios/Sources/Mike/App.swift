@@ -68,7 +68,7 @@ struct MikeApp: App {
             navButton(3, "gearshape", "Settings")
         }
         .padding(6)
-        .background(.ultraThinMaterial, in: Capsule())
+        .modifier(GlassCapsule())
         .padding(.horizontal, 24)
         .padding(.bottom, 10)
     }
@@ -85,5 +85,18 @@ struct MikeApp: App {
                 .accessibilityLabel(label)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Real iOS 26 Liquid Glass when the OS provides it; the classic material on
+/// older iOS. Fred asked for "real glass, not mimed" - on iOS 26 this is the
+/// native Liquid Glass effect, below that the honest fallback is a material.
+struct GlassCapsule: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content.background(.ultraThinMaterial, in: Capsule())
+        }
     }
 }
