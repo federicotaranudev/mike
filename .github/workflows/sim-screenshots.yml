@@ -10,8 +10,9 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Record harness SDK (compare with production build SDK)
+      - name: Select latest Xcode (match production builds)
         run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)/Contents/Developer"
           { echo "### Harness toolchain"; echo '```'; xcodebuild -version; echo "iphonesimulator SDK: $(xcrun --sdk iphonesimulator --show-sdk-version)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Compile app for the iOS simulator (6 variants)
         run: |
@@ -77,6 +78,9 @@ jobs:
           }, open(sys.argv[1], "wb"))
           PLIST
             codesign -s - --timestamp=none "$APP" || true
+            # Assert the pixels come from an SDK26-linked binary, not an old-SDK
+            # build that would silently fall back to mimed glass.
+            xcrun vtool -show-build "$APP/MikeSim" | grep -E 'sdk[[:space:]]+26'               || { echo "FATAL: sim binary not SDK26-linked"; xcrun vtool -show-build "$APP/MikeSim"; exit 1; }
             xcrun simctl uninstall booted dev.federicotaranu.mike || true
             xcrun simctl install booted "$APP"
             xcrun simctl launch booted dev.federicotaranu.mike
