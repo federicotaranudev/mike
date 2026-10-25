@@ -8,6 +8,7 @@ from dataclasses import dataclass
 class Settings:
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
     ntfy_topic: str = os.getenv("NTFY_TOPIC", "")
+    api_token: str = os.getenv("MIKE_TOKEN", "")
     agent_name: str = os.getenv("AGENT_NAME", "agent")
     approval_required: bool = os.getenv("APPROVAL_REQUIRED", "true").lower() == "true"
     db_path: str = os.getenv("DB_PATH", "/data/agent.db")
