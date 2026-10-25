@@ -10,10 +10,22 @@ final class LocalEngine {
     static let shared = LocalEngine()
     private var engine: Engine?
     private var conversation: Conversation?
+    private var loadedModelPath: String?
 
     func reply(to text: String, modelPath: String) async throws -> String {
+        if engine != nil && loadedModelPath != modelPath {
+            // User downloaded a different artifact; drop the old engine so the
+            // new file loads with its own backend.
+            engine = nil
+            conversation = nil
+            loadedModelPath = nil
+        }
         if engine == nil {
-            let config = try EngineConfig(modelPath: modelPath, backend: .gpu,
+            // Backend is deterministic from the artifact the user explicitly
+            // downloaded: the "-gpu" file only runs on Metal, the base file
+            // only runs on the processor (measured in CI). Never guessed.
+            let backend: Backend = modelPath.contains("-gpu") ? .gpu : .cpu()
+            let config = try EngineConfig(modelPath: modelPath, backend: backend,
                                           cacheDir: NSTemporaryDirectory())
             let e = Engine(engineConfig: config)
             // Engine is an actor; heavy model load happens inside initialize().
@@ -21,6 +33,7 @@ final class LocalEngine {
             let c = try await e.createConversation()
             engine = e
             conversation = c
+            loadedModelPath = modelPath
         }
         guard let conversation else {
             throw NSError(domain: "Mike", code: 0, userInfo: [NSLocalizedDescriptionKey: "Local engine failed to start."])
