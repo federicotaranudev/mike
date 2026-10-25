@@ -3,6 +3,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+from dotenv import load_dotenv
+
+load_dotenv()  # reads .env in the working directory when present
+
 
 @dataclass(frozen=True)
 class Settings:
