@@ -1,5 +1,26 @@
 import Foundation
 
+/// Fail-closed network rules shared by all clients: HTTPS only, and redirects
+/// to a different host are refused so a Bearer token or API key can never leak
+/// to a host we did not configure.
+enum RedirectPolicy {
+    static func allowed(newRequest: URLRequest, originalHost: String?) -> Bool {
+        guard let url = newRequest.url, url.scheme == "https", url.host == originalHost else { return false }
+        return true
+    }
+}
+
+final class SameHostOnlySession: NSObject, URLSessionDelegate {
+    let originalHost: String?
+    init(originalHost: String?) { self.originalHost = originalHost }
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(RedirectPolicy.allowed(newRequest: request, originalHost: originalHost) ? request : nil)
+    }
+}
+
 /// Talks to a backend the user configured in Settings: a Mike core they run
 /// themselves. The URL is not a secret (UserDefaults); the token lives in the
 /// iPhone Keychain only.
@@ -18,6 +39,9 @@ final class APIClient: ObservableObject {
 
     private func request(_ path: String, method: String = "GET", body: Data? = nil) async throws -> Data {
         guard let baseURL else { throw URLError(.badURL) }
+        // Fail closed: the backend token must never travel over plain HTTP,
+        // no matter what is stored.
+        guard baseURL.scheme == "https" else { throw URLError(.unsupportedURL) }
         var req = URLRequest(url: baseURL.appendingPathComponent(path))
         req.httpMethod = method
         req.timeoutInterval = 20
@@ -28,7 +52,10 @@ final class APIClient: ObservableObject {
             req.httpBody = body
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        let session = URLSession(configuration: .ephemeral,
+                                 delegate: SameHostOnlySession(originalHost: baseURL.host),
+                                 delegateQueue: nil)
+        let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw URLError(.badServerResponse)
         }
