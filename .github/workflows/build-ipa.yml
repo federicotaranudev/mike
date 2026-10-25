@@ -17,9 +17,10 @@ jobs:
 
       - name: Install xtool 1.17.0
         run: |
-          curl -L -o xtool.app.zip https://github.com/xtool-org/xtool/releases/download/1.17.0/xtool.app.zip
-          ditto -x -k xtool.app.zip xtool.app
+          curl -fL -o xtool.app.zip https://github.com/xtool-org/xtool/releases/download/1.17.0/xtool.app.zip
+          ditto -x -k xtool.app.zip .
           echo "$PWD/xtool.app/Contents/Resources/bin" >> "$GITHUB_PATH"
+          "$PWD/xtool.app/Contents/Resources/bin/xtool" --version
 
       - name: Build unsigned IPA
         working-directory: ios
