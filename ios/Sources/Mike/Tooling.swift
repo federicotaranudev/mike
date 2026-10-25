@@ -69,7 +69,7 @@ enum Tooling {
         ToolDef(function: .init(name: "remember",
             description: "Save a fact the owner asked you to remember. Needs the owner's approval before it is stored.",
             parameters: ["type": .init(type: "object", description: nil,
-                required: ["text"], properties: ["text": .init(type: "string", description: "The fact to remember, one short sentence.")])])),
+                properties: ["text": .init(type: "string", description: "The fact to remember, one short sentence.")], required: ["text"])])),
         ToolDef(function: .init(name: "recall",
             description: "Search things the owner asked you to remember.",
             parameters: ["type": .init(type: "object", description: nil,
