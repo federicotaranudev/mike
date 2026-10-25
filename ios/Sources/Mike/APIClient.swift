@@ -6,10 +6,15 @@ final class APIClient: ObservableObject {
     @Published var baseURL: URL? {
         didSet { UserDefaults.standard.set(baseURL?.absoluteString, forKey: "mike.baseURL") }
     }
+    /// Shared secret the core requires once it leaves 127.0.0.1 (MIKE_TOKEN).
+    @Published var token: String {
+        didSet { UserDefaults.standard.set(token, forKey: "mike.token") }
+    }
     @Published var lastError: String?
 
     init() {
         if let s = UserDefaults.standard.string(forKey: "mike.baseURL") { baseURL = URL(string: s) }
+        token = UserDefaults.standard.string(forKey: "mike.token") ?? ""
     }
 
     private func request(_ path: String, method: String = "GET", body: Data? = nil) async throws -> Data {
@@ -17,6 +22,9 @@ final class APIClient: ObservableObject {
         var req = URLRequest(url: baseURL.appendingPathComponent(path))
         req.httpMethod = method
         req.timeoutInterval = 20
+        if !token.isEmpty {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         if let body {
             req.httpBody = body
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
