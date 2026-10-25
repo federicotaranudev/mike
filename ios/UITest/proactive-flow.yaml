@@ -2,9 +2,17 @@ appId: dev.federicotaranu.mike
 ---
 # Proactive layer acceptance: after -NotifSmoke scheduled a reminder and the
 # app was killed, a plain relaunch must make Mike speak first about the pending
-# reminder in an untouched chat. Proves the foreground check-in path.
+# reminder. A SECOND relaunch with unchanged signals must stay silent (durable
+# dedup - no check-in spam).
 - launchApp
 - assertVisible:
     text: "Welcome back"
     timeout: 20000
 - takeScreenshot: proactive-checkin
+- killApp
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertNotVisible:
+    text: "Welcome back"
+    timeout: 10000
