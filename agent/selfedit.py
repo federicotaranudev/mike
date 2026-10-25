@@ -11,7 +11,6 @@ tests inside a networkless container -> show the user the diff -> user
 approves -> merge. It must never touch guardrails.py and never merge itself.
 """
 from __future__ import annotations
-import os
 import subprocess
 
 from .guardrails import PROTECTED_FILES
@@ -44,16 +43,15 @@ def check_allowed(branch: str = "self-edit") -> None:
 
 
 def run_tests() -> bool:
-    """DISABLED. Running model-generated tests/code on the user's PC without
-    an isolated sandbox would give generated code the server's network access
-    and secrets. Only an actual throwaway container may set the marker below;
-    since that container does not exist yet, this always raises."""
-    if os.environ.get("MIKE_SELFEDIT_ISOLATED_CONTAINER") != "yes":
-        raise SelfEditDisabled(
-            "self-edit execution is disabled: no isolated sandbox exists. "
-            "Model-generated code must not run on the user's PC."
-        )
-    raise SelfEditDisabled("unreachable: sandbox not implemented")  # pragma: no cover
+    """DISABLED, unconditionally. Running model-generated tests/code on the
+    user's PC without a real isolated sandbox would give generated code the
+    server's network access and secrets. There is no bypass: this refuses in
+    every environment until a separate sandbox boundary actually exists and
+    this function is redesigned around it."""
+    raise SelfEditDisabled(
+        "self-edit execution is disabled: no isolated sandbox exists. "
+        "Model-generated code must not run on the user's PC."
+    )
 
 
 def diff_for_approval(branch: str = "self-edit") -> str:
