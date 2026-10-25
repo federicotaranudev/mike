@@ -34,7 +34,11 @@ final class LocalEngine {
 enum LocalInference {
     /// True only in builds that actually ship the LiteRT-LM runtime.
     static var runtimeBundled: Bool {
-        #if canImport(LiteRTLM)
+        // SIM_RUNTIME_BUNDLED is set only by the sim-screenshots CI variant that
+        // renders the exact copy a runtime-bundled (device) build shows.
+        #if SIM_RUNTIME_BUNDLED
+        return true
+        #elseif canImport(LiteRTLM)
         return true
         #else
         return false
