@@ -111,6 +111,11 @@ jobs:
           xcrun simctl launch --console booted dev.federicotaranu.mike -RuntimeSmoke "$CONT/Documents/model.litertlm" 2>&1 | grep --line-buffered -E "SMOKE_|error|Error|fatal" | tee /tmp/smoke-gpu.log
           set -e
           { echo "### Runtime smoke - GPU"; echo '```'; grep -E "SMOKE_(START|RESULT)" /tmp/smoke-gpu.log || echo "no smoke output captured"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if ! grep -q "SMOKE_RESULT" /tmp/smoke-gpu.log; then
+            # No result line at all means the process died before flushing
+            # (e.g. memory kill) - pull the sim unified log for evidence.
+            { echo "### GPU attempt - sim log tail (possible kill)"; echo '```'; xcrun simctl spawn booted log show --last 6m --style compact --predicate 'process == "MikeSim"' 2>/dev/null | grep -iE "smoke|memory|jetsam|kill|crash" | tail -15; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Smoke run - CPU backend (only if GPU failed)
         run: |
           set -euo pipefail
