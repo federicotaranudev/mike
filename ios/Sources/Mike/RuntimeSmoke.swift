@@ -14,26 +14,45 @@ enum RuntimeSmoke {
         let args = ProcessInfo.processInfo.arguments
 
         if args.contains("-NotifSmoke") {
-            NSLog("NOTIF_SCHEDULING via Tooling.scheduleNotification")
+            // Simulator permission dialogs are not grantable via simctl/TCC -
+            // the system dialog is the only path, and it races the UI driver's
+            // attach. So retry: check pending first (never double-schedule),
+            // and attempt again every 7s until one sticks (max 4 attempts).
             let store = AgentStore()
-            let date = Date().addingTimeInterval(65)
-            Tooling.scheduleNotification(text: "Mike CI notification smoke", at: date, store: store)
-            UNUserNotificationCenter.current().getNotificationSettings { st in
-                // 0 notDetermined, 1 denied, 2 authorized, 3 provisional, 4 ephemeral
-                NSLog("NOTIF_AUTH_STATUS raw=\(st.authorizationStatus.rawValue)")
-            }
-            // Auth + add callbacks are async; report pending requests via NSLog
-            // (captured from the unified log by the workflow). Keep running so
-            // the UI driver sees a live app; the flow kills us afterwards.
-            DispatchQueue.global().asyncAfter(deadline: .now() + 8) {
-                UNUserNotificationCenter.current().getNotificationSettings { st in
-                    NSLog("NOTIF_AUTH_STATUS_AT_CHECK raw=\(st.authorizationStatus.rawValue)")
+            let center = UNUserNotificationCenter.current()
+            var attempt = 0
+            func trySchedule() {
+                attempt += 1
+                center.getPendingNotificationRequests { reqs in
+                    let mine = reqs.filter { $0.content.title == "Mike reminder" }
+                    if !mine.isEmpty {
+                        NSLog("NOTIF_PENDING count=\(reqs.count)")
+                        for r in reqs { NSLog("NOTIF_PENDING_ITEM \(r.content.body)") }
+                        return
+                    }
+                    NSLog("NOTIF_SCHEDULING attempt=\(attempt) via Tooling.scheduleNotification")
+                    Tooling.scheduleNotification(text: "Mike CI notification smoke",
+                                                 at: Date().addingTimeInterval(65), store: store)
+                    center.getNotificationSettings { st in
+                        // 0 notDetermined, 1 denied, 2 authorized, 3 provisional, 4 ephemeral
+                        NSLog("NOTIF_AUTH_STATUS raw=\(st.authorizationStatus.rawValue)")
+                    }
+                    if attempt < 4 {
+                        DispatchQueue.global().asyncAfter(deadline: .now() + 7) { trySchedule() }
+                    } else {
+                        DispatchQueue.global().asyncAfter(deadline: .now() + 7) {
+                            center.getNotificationSettings { st in
+                                NSLog("NOTIF_AUTH_STATUS_AT_CHECK raw=\(st.authorizationStatus.rawValue)")
+                            }
+                            center.getPendingNotificationRequests { r2 in
+                                NSLog("NOTIF_PENDING count=\(r2.count)")
+                                for r in r2 { NSLog("NOTIF_PENDING_ITEM \(r.content.body)") }
+                            }
+                        }
+                    }
                 }
-                UNUserNotificationCenter.current().getPendingNotificationRequests { reqs in
-                    NSLog("NOTIF_PENDING count=\(reqs.count)")
-                    for r in reqs { NSLog("NOTIF_PENDING_ITEM \(r.content.body)") }
-                }
             }
+            trySchedule()
             return
         }
 
