@@ -12,12 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      - name: Record build SDK (production glass linkage evidence)
+      - name: Select latest Xcode (not the image default)
         run: |
-          { echo "### Build toolchain"; echo '```'; xcodebuild -version; echo "iphoneos SDK: $(xcrun --sdk iphoneos --show-sdk-version)"; echo "swift: $(swift --version 2>&1 | head -1)"; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)/Contents/Developer"
+          { echo "### Build toolchain"; echo '```'; xcodebuild -version; swift --version | head -1; echo "iphoneos SDK: $(xcrun --sdk iphoneos --show-sdk-version) at $(xcrun --sdk iphoneos --show-sdk-path)"; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Install xtool 1.17.0
         run: |
@@ -29,6 +27,46 @@ jobs:
       - name: Build unsigned IPA
         working-directory: ios
         run: xtool dev build --ipa -c release
+
+      - name: Relink app executable against the current iOS SDK
+        # xtool's packaged executable is stamped with an old SDK (v0.4.1 shipped
+        # LC_BUILD_VERSION sdk=17.0.0), which silently drops iOS 26 Liquid Glass
+        # on device even though the simulator (SDK 26) shows it. Same class of
+        # bug NOVA hit. Fix, proven on NOVA: recompile the app executable
+        # directly against the CURRENT iphoneos SDK, replace it inside the
+        # bundle, and ASSERT the final Mach-O build version. If the SDK lacks
+        # the glass APIs the compile itself fails loudly.
+        run: |
+          set -euo pipefail
+          IPA="$(ls ios/xtool/*.ipa | head -n1)"
+          rm -rf /tmp/mike-relink && mkdir -p /tmp/mike-relink
+          unzip -q "$IPA" -d /tmp/mike-relink
+          APP=/tmp/mike-relink/Payload/Mike.app
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
+          # LiteRT-LM wrapper sources + device-slice framework (same pins as runtime-smoke)
+          mkdir -p /tmp/litertlm
+          curl -fsSL "https://github.com/google-ai-edge/LiteRT-LM/archive/refs/tags/v0.18.1.tar.gz" | tar -xz -C /tmp/litertlm --strip-components=1
+          curl -fsSL -o /tmp/xcf.zip "https://github.com/google-ai-edge/LiteRT-LM/releases/download/v0.18.1/CLiteRTLM.xcframework.zip"
+          unzip -q -o /tmp/xcf.zip -d /tmp/xcf
+          FW=/tmp/xcf/CLiteRTLM.xcframework/ios-arm64/CLiteRTLM.framework
+          # 1) LiteRTLM Swift module as a dylib carried inside the app bundle
+          cd /tmp/litertlm/swift
+          xcrun -sdk iphoneos swiftc -parse-as-library             -O -target arm64-apple-ios17.0 -sdk "$SDK"             -module-name LiteRTLM -emit-library -emit-module             -emit-module-path /tmp/litertlm/LiteRTLM.swiftmodule             -install_name @rpath/libLiteRTLM.dylib             -Xcc -fmodule-map-file="$FW/Modules/module.modulemap"             -F /tmp/xcf/CLiteRTLM.xcframework/ios-arm64 -framework CLiteRTLM             $(ls *.swift | grep -v Tests)             -o /tmp/litertlm/libLiteRTLM.dylib
+          # 2) Mike executable against the CURRENT SDK (this is where the
+          #    glassEffect code path gets its real production linkage)
+          cd "$GITHUB_WORKSPACE"
+          xcrun -sdk iphoneos swiftc -parse-as-library             -O -target arm64-apple-ios17.0 -sdk "$SDK"             -module-name Mike             -I /tmp/litertlm             -Xcc -fmodule-map-file="$FW/Modules/module.modulemap"             -F /tmp/xcf/CLiteRTLM.xcframework/ios-arm64 -framework CLiteRTLM             -L /tmp/litertlm -lLiteRTLM             ios/Sources/Mike/*.swift -o "$APP/Mike"             -Xlinker -rpath -Xlinker @executable_path/Frameworks
+          mkdir -p "$APP/Frameworks"
+          cp /tmp/litertlm/libLiteRTLM.dylib "$APP/Frameworks/"
+          /usr/libexec/PlistBuddy -c "Add :DTSDKName string iphoneos$SDK_VERSION" "$APP/Info.plist" 2>/dev/null             || /usr/libexec/PlistBuddy -c "Set :DTSDKName iphoneos$SDK_VERSION" "$APP/Info.plist"
+          # 3) ASSERT the final packaged Mach-O, not the environment
+          { echo "### Final executable LC_BUILD_VERSION"; echo '```'; xcrun vtool -show-build "$APP/Mike"; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+          xcrun vtool -show-build "$APP/Mike" | grep -E 'sdk[[:space:]]+26'             || { echo "FATAL: final IPA executable is not linked against SDK 26 - glass would be simulated-only"; exit 1; }
+          codesign --force --sign - "$APP/Frameworks/libLiteRTLM.dylib"
+          codesign --force --sign - "$APP"
+          rm "$IPA"
+          (cd /tmp/mike-relink && zip -qry "$GITHUB_WORKSPACE/$IPA" Payload)
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
@@ -43,6 +81,6 @@ jobs:
       - name: Publish release with the IPA
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.4.1
-          name: Mike iPhone v0.4.1 - runtime + verified model download (SHA-256 checked)
+          tag_name: v0.4.2
+          name: Mike iPhone v0.4.2 - model artifact choice, real Liquid Glass (SDK26 relink verified)
           files: ios/xtool/Mike-iPhone.ipa
