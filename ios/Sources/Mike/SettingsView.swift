@@ -14,7 +14,7 @@ struct SettingsView: View {
                         Text(store.provider?.title ?? "Not set").foregroundStyle(.secondary)
                     }
                     Button("Change provider") { showSetup = true }
-                    Text("Switching keeps your chats and memory. Mike never switches on its own.")
+                    Text("Switching keeps your chats and settings. Mike never switches on its own.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 if store.provider == .groq {
