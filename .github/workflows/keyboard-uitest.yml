@@ -89,4 +89,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create sim-evidence --title "Simulator screenshots (UI evidence)" --notes "Automated simulator captures for review - not a Mike release. Safe to delete." --latest=false || true
-          gh release upload sim-evidence kbshots/*.png --clobber || true
+          gh release upload sim-evidence kbshots/*.png --clobber
