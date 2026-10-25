@@ -8,12 +8,12 @@ struct ChatView: View {
     #if SIM_FORCE_LOCAL
     // Screenshot variant: show the honest "not wired yet" state up front.
     @State private var messages: [ChatMessage] = [
-        ChatMessage(role: .mike, text: "Hey, I'm Mike. Ask me something, or tell me what to remember. Watching things on my own isn't built yet - when it is, I'll tell you here."),
+        ChatMessage(role: .mike, text: "Hey, I'm Mike. Ask me something, or tell me what to remember. If approvals or your reminders need you when you open the app, I'll say so first. I don't run in the background - scheduled reminders reach you as normal notifications."),
         ChatMessage(role: .mike, text: "The on-device model isn't downloaded yet. Get it in Settings (2.0 GB, runs on the iPhone GPU - first reply loads it, which takes a while, and it's untested on iPhone 13). No download, no fake replies.")
     ]
     #else
     @State private var messages: [ChatMessage] = [
-        ChatMessage(role: .mike, text: "Hey, I'm Mike. Ask me something, or tell me what to remember. Watching things on my own isn't built yet - when it is, I'll tell you here.")
+        ChatMessage(role: .mike, text: "Hey, I'm Mike. Ask me something, or tell me what to remember. If approvals or your reminders need you when you open the app, I'll say so first. I don't run in the background - scheduled reminders reach you as normal notifications.")
     ]
     #endif
     @State private var draft = ""
@@ -75,6 +75,14 @@ struct ChatView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
             .scrollDismissesKeyboard(.interactively)
+            .onAppear {
+                ProactiveEngine.speakUpIfWarranted(store: agent) { text in
+                    // Only into an untouched chat - never inject mid-conversation.
+                    if messages.count <= 1 {
+                        messages.append(ChatMessage(role: .mike, text: text))
+                    }
+                }
+            }
         }
     }
 
