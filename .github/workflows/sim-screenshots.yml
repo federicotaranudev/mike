@@ -1,0 +1,78 @@
+name: sim-screenshots
+on: workflow_dispatch
+
+jobs:
+  sim:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile app for the iOS simulator (3 tab variants)
+        run: |
+          set -euo pipefail
+          cd ios/Sources/Mike
+          for TAB in CHAT APPROVALS ACTIVITY; do
+            FLAG=""
+            [ "$TAB" = APPROVALS ] && FLAG="-D SIM_TAB_APPROVALS"
+            [ "$TAB" = ACTIVITY ] && FLAG="-D SIM_TAB_ACTIVITY"
+            xcrun -sdk iphonesimulator swiftc -parse-as-library \
+              -target arm64-apple-ios17.0-simulator \
+              -module-name MikeSim $FLAG \
+              *.swift -o "/tmp/MikeSim_$TAB"
+            echo "built $TAB"
+          done
+      - name: Bundle and screenshot each variant
+        run: |
+          set -euo pipefail
+          mkdir -p shots
+          # pick an available iPhone simulator
+          DEV=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          for rt,devs in d.items():
+              if 'iOS' not in rt: continue
+              for dev in devs:
+                  if 'iPhone' in dev['name']:
+                      print(dev['udid']); sys.exit(0)
+          sys.exit('no iPhone sim')")
+          echo "device $DEV"
+          xcrun simctl boot "$DEV" || true
+          for TAB in CHAT APPROVALS ACTIVITY; do
+            APP="/tmp/MikeSim_$TAB.app"
+            mkdir -p "$APP"
+            cp "/tmp/MikeSim_$TAB" "$APP/MikeSim"
+            python3 - "$APP/Info.plist" <<'PLIST'
+          import plistlib, sys
+          plistlib.dump({
+            "CFBundleExecutable": "MikeSim",
+            "CFBundleIdentifier": "dev.federicotaranu.mike",
+            "CFBundleName": "Mike",
+            "CFBundleDisplayName": "Mike",
+            "CFBundlePackageType": "APPL",
+            "CFBundleShortVersionString": "0.1",
+            "CFBundleVersion": "1",
+            "MinimumOSVersion": "17.0",
+            "UIDeviceFamily": [1],
+            "CFBundleSupportedPlatforms": ["iPhoneSimulator"],
+            "UILaunchScreen": {},
+          }, open(sys.argv[1], "wb"))
+          PLIST
+            codesign -s - --timestamp=none "$APP" || true
+            xcrun simctl uninstall booted dev.federicotaranu.mike || true
+            xcrun simctl install booted "$APP"
+            xcrun simctl launch booted dev.federicotaranu.mike
+            sleep 8
+            xcrun simctl io booted screenshot "shots/$TAB.png"
+            xcrun simctl terminate booted dev.federicotaranu.mike || true
+            echo "shot $TAB"
+          done
+          ls -la shots/
+      - name: Commit screenshots to docs/screenshots
+        run: |
+          set -euo pipefail
+          mkdir -p docs/screenshots
+          cp shots/*.png docs/screenshots/
+          git config user.name "mike-ci"
+          git config user.email "ci@localhost"
+          git add docs/screenshots
+          git commit -m "simulator screenshots: chat, approvals, activity (fresh install, no core configured)" || echo "nothing to commit"
+          git push
