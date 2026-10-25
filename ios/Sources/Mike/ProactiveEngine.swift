@@ -36,36 +36,53 @@ enum ProactiveEngine {
     static func speakUpIfWarranted(store: AgentStore, deliver: @escaping (String) -> Void) {
         guard !spokenThisLaunch else { return }
         spokenThisLaunch = true
-        UNUserNotificationCenter.current().getPendingNotificationRequests { reqs in
-            let waiting = store.approvals.filter { $0.status == .pending }
-            let reminders = reqs.filter { $0.content.title == "Mike reminder" }
-            let digest = signalDigest(approvalIDs: waiting.map { $0.id },
-                                      reminderIDs: reminders.map { $0.identifier })
-            guard (!waiting.isEmpty || !reminders.isEmpty), shouldSpeak(currentDigest: digest) else { return }
-            var parts: [String] = []
-            if !waiting.isEmpty {
-                var p = "\(waiting.count) thing\(waiting.count == 1 ? "" : "s") need\(waiting.count == 1 ? "s" : "") your yes in Approvals"
-                if let first = waiting.first { p += " (\"\(first.title)\")" }
-                parts.append(p)
-            }
-            if !reminders.isEmpty {
-                let soonest = reminders
-                    .compactMap { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() }
-                    .sorted().first
-                var p = "\(reminders.count) reminder\(reminders.count == 1 ? "" : "s") set"
-                if let d = soonest {
-                    let f = DateFormatter()
-                    f.dateFormat = "HH:mm"
-                    p += ", next at \(f.string(from: d))"
+        let center = UNUserNotificationCenter.current()
+        center.getPendingNotificationRequests { reqs in
+            center.getDeliveredNotifications { notes in
+                let waiting = store.approvals.filter { $0.status == .pending }
+                // Signals are pending reminders AND reminders that fired while
+                // Mike was closed - a delivered notification is exactly the
+                // "while you were away" case this layer exists for.
+                let pending = reqs.filter { $0.content.title == "Mike reminder" }
+                let fired = notes.filter { $0.request.content.title == "Mike reminder" }
+                let digest = signalDigest(approvalIDs: waiting.map { $0.id },
+                                          reminderIDs: pending.map { $0.identifier } + fired.map { $0.request.identifier })
+                guard (!waiting.isEmpty || !pending.isEmpty || !fired.isEmpty),
+                      shouldSpeak(currentDigest: digest) else { return }
+                var parts: [String] = []
+                if !waiting.isEmpty {
+                    var p = "\(waiting.count) thing\(waiting.count == 1 ? "" : "s") need\(waiting.count == 1 ? "s" : "") your yes in Approvals"
+                    if let first = waiting.first { p += " (\"\(first.title)\")" }
+                    parts.append(p)
                 }
-                parts.append(p)
-            }
-            let text = "Welcome back - while you were away: " + parts.joined(separator: "; ") + "."
-            DispatchQueue.main.async {
-                markSpoken(digest)
-                store.log("proactive", "Spoke up first: \(text)")
-                deliver(text)
+                if !pending.isEmpty {
+                    let soonest = pending
+                        .compactMap { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() }
+                        .sorted().first
+                    var p = "\(pending.count) reminder\(pending.count == 1 ? "" : "s") set"
+                    if let d = soonest {
+                        let f = DateFormatter()
+                        f.dateFormat = "HH:mm"
+                        p += ", next at \(f.string(from: d))"
+                    }
+                    parts.append(p)
+                }
+                if !fired.isEmpty {
+                    var p = "\(fired.count) reminder\(fired.count == 1 ? "" : "s") fired while Mike was closed"
+                    if let first = fired.first {
+                        let body = first.request.content.body
+                        if !body.isEmpty { p += " (\"\(body)\")" }
+                    }
+                    parts.append(p)
+                }
+                let text = "Welcome back - while you were away: " + parts.joined(separator: "; ") + "."
+                DispatchQueue.main.async {
+                    markSpoken(digest)
+                    store.log("proactive", "Spoke up first: \(text)")
+                    deliver(text)
+                }
             }
         }
+    
     }
 }
