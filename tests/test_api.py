@@ -7,6 +7,9 @@ from agent import api
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
+    import dataclasses
+    # Tests must not depend on the developer's own .env: no token required here.
+    monkeypatch.setattr(api, "settings", dataclasses.replace(api.settings, api_token=""))
     monkeypatch.setattr(api, "memory", api.Memory(str(tmp_path / "t.db")))
     return TestClient(api.app)
 
