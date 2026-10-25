@@ -8,10 +8,14 @@ struct ApprovalsView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if approvals.isEmpty {
+                if loadError != nil && approvals.isEmpty {
+                    ContentUnavailableView("Can't reach Mike's core",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("Offline - I don't know whether anything is waiting. Pull to retry once the core is up."))
+                } else if approvals.isEmpty {
                     ContentUnavailableView("Nothing waiting",
                         systemImage: "checkmark.shield",
-                        description: Text(loadError ?? "When Mike wants to message someone, spend money or change himself, it shows up here first."))
+                        description: Text("Connected to the core - this is a real empty queue, not a guess. When Mike wants to message someone, spend money or change himself, it shows up here first."))
                 } else {
                     List {
                         ForEach(approvals) { approval in
