@@ -2,6 +2,7 @@ name: Build Mike IPA
 
 on:
   workflow_dispatch:
+  push:  # TEMPORARY: ui dispatch unreliable; removed after the v0.2 build
 
 permissions:
   contents: write
@@ -39,6 +40,6 @@ jobs:
       - name: Publish release with the IPA
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.${{ github.run_number }}
-          name: Mike iPhone v0.1.${{ github.run_number }}
+          tag_name: v0.2.${{ github.run_number }}
+          name: Mike iPhone v0.2.${{ github.run_number }}
           files: ios/xtool/Mike-iPhone.ipa
