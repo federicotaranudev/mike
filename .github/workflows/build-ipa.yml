@@ -39,6 +39,6 @@ jobs:
       - name: Publish release with the IPA
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.0
-          name: Mike iPhone v0.1.0
+          tag_name: v0.1.${{ github.run_number }}
+          name: Mike iPhone v0.1.${{ github.run_number }}
           files: ios/xtool/Mike-iPhone.ipa
