@@ -1,7 +1,6 @@
 name: sim-screenshots
 on:
   workflow_dispatch:
-  push:  # TEMPORARY: ui dispatch unreliable; removed after this evidence run
 
 permissions:
   contents: write
