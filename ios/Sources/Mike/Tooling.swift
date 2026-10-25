@@ -68,19 +68,19 @@ enum Tooling {
             parameters: ["type": .init(type: "object", description: nil, properties: [:], required: [])])),
         ToolDef(function: .init(name: "remember",
             description: "Save a fact the owner asked you to remember. Needs the owner's approval before it is stored.",
-            parameters: ["type": .init(type: "object", description: nil, required: ["text"],
-                properties: ["text": .init(type: "string", description: "The fact to remember, one short sentence.")])])),
+            parameters: ["type": .init(type: "object", description: nil,
+                required: ["text"], properties: ["text": .init(type: "string", description: "The fact to remember, one short sentence.")])])),
         ToolDef(function: .init(name: "recall",
             description: "Search things the owner asked you to remember.",
             parameters: ["type": .init(type: "object", description: nil, required: ["query"],
                 properties: ["query": .init(type: "string", description: "Word or phrase to look for.")])])),
         ToolDef(function: .init(name: "schedule_reminder",
             description: "Schedule an on-device reminder notification for a future time. Needs the owner's approval before it is set.",
-            parameters: ["type": .init(type: "object", description: nil, required: ["text", "at"],
+            parameters: ["type": .init(type: "object", description: nil,
                 properties: [
                     "text": .init(type: "string", description: "What to remind about."),
                     "at": .init(type: "string", description: "When to fire, ISO 8601 with timezone, e.g. 2026-10-26T18:30:00+02:00."),
-                ])])),
+                ], required: ["text", "at"])])),
     ]
 
     // MARK: Argument validation (pure, testable)
