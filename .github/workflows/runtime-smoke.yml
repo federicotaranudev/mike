@@ -1,6 +1,13 @@
 name: runtime-smoke
 on:
   workflow_dispatch:
+    inputs:
+      model:
+        description: "Model artifact: gpu (2.0GB, GPU-only) or base (2.59GB, may support CPU)"
+        required: true
+        default: "gpu"
+        type: choice
+        options: [gpu, base]
 
 # REAL LiteRT-LM runtime validation on the CI simulator (arm64 slice exists in
 # CLiteRTLM.xcframework v0.18.1). Loads the actual 2.0 GB model, runs one
@@ -95,11 +102,19 @@ jobs:
           codesign -s - --timestamp=none --force "$APP" || true
           xcrun simctl uninstall booted dev.federicotaranu.mike || true
           xcrun simctl install booted "$APP"
-          echo "downloading model (2,008,432,640 bytes)..."
-          curl -fsSL -o /tmp/model.litertlm "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-gpu.litertlm"
+          if [ "${{ inputs.model }}" = "base" ]; then
+            FILE="gemma-4-E2B-it.litertlm"
+          else
+            FILE="gemma-4-E2B-it-gpu.litertlm"
+          fi
+          echo "downloading $FILE ..."
+          curl -fsSL -o /tmp/model.litertlm "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/$FILE"
           ls -l /tmp/model.litertlm
-          # Integrity: SHA-256 against the publisher's LFS hash (X-Linked-ETag).
-          echo "a53a59001894c58e6bdb5b9b227709f91a2e3e556baa7d85acf9c55402ba5cf5  /tmp/model.litertlm" | shasum -a 256 -c -
+          # Integrity: SHA-256 against the publisher's LFS hash, fetched live
+          # from the HF paths-info API for the chosen artifact.
+          EXPECT=$(curl -fsSL -X POST "https://huggingface.co/api/models/litert-community/gemma-4-E2B-it-litert-lm/paths-info/main" -H "Content-Type: application/json" -d "{\"paths\":[\"$FILE\"]}" | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['lfs']['oid'])")
+          echo "expected sha256: $EXPECT"
+          echo "$EXPECT  /tmp/model.litertlm" | shasum -a 256 -c -
           CONT=$(xcrun simctl get_app_container booted dev.federicotaranu.mike data)
           mkdir -p "$CONT/Documents"
           cp /tmp/model.litertlm "$CONT/Documents/model.litertlm"
@@ -107,10 +122,19 @@ jobs:
       - name: Smoke run - GPU backend
         run: |
           set -euo pipefail
+          # Sample the app's resident memory every 5s while it runs: real data
+          # for the iPhone 13 (4GB) feasibility question.
+          ( for i in $(seq 1 150); do
+              ps -axo rss=,comm= | awk '/MikeSim$/ {print $1}' >> /tmp/rss-gpu.log
+              sleep 5
+            done ) &
+          SAMPLER=$!
           set +e
           xcrun simctl launch --console booted dev.federicotaranu.mike -RuntimeSmoke "$CONT/Documents/model.litertlm" 2>&1 | grep --line-buffered -E "SMOKE_|error|Error|fatal" | tee /tmp/smoke-gpu.log
           set -e
-          { echo "### Runtime smoke - GPU"; echo '```'; grep -E "SMOKE_(START|RESULT)" /tmp/smoke-gpu.log || echo "no smoke output captured"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          kill $SAMPLER 2>/dev/null || true
+          PEAK=$(sort -n /tmp/rss-gpu.log 2>/dev/null | tail -1)
+          { echo "### Runtime smoke - GPU"; echo '```'; grep -E "SMOKE_(START|RESULT)" /tmp/smoke-gpu.log || echo "no smoke output captured"; echo "PEAK_RSS_MB=$(( ${PEAK:-0} / 1024 ))"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           if ! grep -q "SMOKE_RESULT" /tmp/smoke-gpu.log; then
             # No result line at all means the process died before flushing
             # (e.g. memory kill) - pull the sim unified log for evidence.
@@ -123,10 +147,17 @@ jobs:
             echo "GPU smoke passed, CPU retry not needed"
             exit 0
           fi
+          ( for i in $(seq 1 150); do
+              ps -axo rss=,comm= | awk '/MikeSim$/ {print $1}' >> /tmp/rss-cpu.log
+              sleep 5
+            done ) &
+          SAMPLER=$!
           set +e
           xcrun simctl launch --console booted dev.federicotaranu.mike -RuntimeSmoke "$CONT/Documents/model.litertlm" cpu 2>&1 | grep --line-buffered -E "SMOKE_|error|Error|fatal" | tee /tmp/smoke-cpu.log
           set -e
-          { echo "### Runtime smoke - CPU retry"; echo '```'; grep -E "SMOKE_(START|RESULT)" /tmp/smoke-cpu.log || echo "no smoke output captured"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          kill $SAMPLER 2>/dev/null || true
+          PEAKC=$(sort -n /tmp/rss-cpu.log 2>/dev/null | tail -1)
+          { echo "### Runtime smoke - CPU retry"; echo '```'; grep -E "SMOKE_(START|RESULT)" /tmp/smoke-cpu.log || echo "no smoke output captured"; echo "PEAK_RSS_MB=$(( ${PEAKC:-0} / 1024 ))"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Verdict
         run: |
           set -euo pipefail
