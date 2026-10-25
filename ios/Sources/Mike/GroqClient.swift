@@ -19,7 +19,10 @@ enum GroqClient {
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.timeoutInterval = 20
         do {
-            let (data, resp) = try await URLSession.shared.data(for: req)
+            let session = URLSession(configuration: .ephemeral,
+                                     delegate: SameHostOnlySession(originalHost: "api.groq.com"),
+                                     delegateQueue: nil)
+            let (data, resp) = try await session.data(for: req)
             guard let http = resp as? HTTPURLResponse else { return "No response from Groq." }
             if http.statusCode == 401 { return "Groq rejected that key. Check it and try again." }
             guard (200..<300).contains(http.statusCode),
@@ -44,7 +47,10 @@ enum GroqClient {
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONEncoder().encode(ChatRequest(model: model, messages: history))
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        let session = URLSession(configuration: .ephemeral,
+                                 delegate: SameHostOnlySession(originalHost: "api.groq.com"),
+                                 delegateQueue: nil)
+        let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         guard (200..<300).contains(http.statusCode) else {
             if let body = try? JSONDecoder().decode(ErrorBody.self, from: data) {
