@@ -1,0 +1,20 @@
+services:
+  agent:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - agent-data:/data
+      - ./:/app:ro
+    ports:
+      - "127.0.0.1:8787:8787"   # exposed to the phone only through the tunnel
+  selfedit-runner:
+    build: .
+    profiles: ["selfedit"]
+    command: ["python", "-m", "agent.selfedit"]
+    env_file: .env
+    volumes:
+      - ./:/app
+    network_mode: none           # sandbox: no network, no host access
+volumes:
+  agent-data:
