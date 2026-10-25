@@ -1,6 +1,9 @@
 name: sim-screenshots
 on: workflow_dispatch
 
+permissions:
+  contents: write
+
 jobs:
   sim:
     runs-on: macos-latest
@@ -71,3 +74,11 @@ jobs:
           name: mike-sim-screenshots
           path: shots/
           retention-days: 30
+
+      - name: Publish screenshots as release assets (evidence only)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create sim-evidence --title "Simulator screenshots (UI evidence)" --notes "Automated simulator captures for review - not a Mike release. Safe to delete." --latest=false || true
+          gh release upload sim-evidence shots/CHAT.png shots/APPROVALS.png shots/ACTIVITY.png --clobber
