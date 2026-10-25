@@ -10,6 +10,9 @@ appId: dev.federicotaranu.mike
       NotifSmoke: "1"
     permissions:
       notifications: allow
+- tapOn:
+    text: "Allow"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 15000
 - killApp
