@@ -18,10 +18,17 @@ enum RuntimeSmoke {
             let store = AgentStore()
             let date = Date().addingTimeInterval(65)
             Tooling.scheduleNotification(text: "Mike CI notification smoke", at: date, store: store)
+            UNUserNotificationCenter.current().getNotificationSettings { st in
+                // 0 notDetermined, 1 denied, 2 authorized, 3 provisional, 4 ephemeral
+                NSLog("NOTIF_AUTH_STATUS raw=\(st.authorizationStatus.rawValue)")
+            }
             // Auth + add callbacks are async; report pending requests via NSLog
             // (captured from the unified log by the workflow). Keep running so
             // the UI driver sees a live app; the flow kills us afterwards.
             DispatchQueue.global().asyncAfter(deadline: .now() + 8) {
+                UNUserNotificationCenter.current().getNotificationSettings { st in
+                    NSLog("NOTIF_AUTH_STATUS_AT_CHECK raw=\(st.authorizationStatus.rawValue)")
+                }
                 UNUserNotificationCenter.current().getPendingNotificationRequests { reqs in
                     NSLog("NOTIF_PENDING count=\(reqs.count)")
                     for r in reqs { NSLog("NOTIF_PENDING_ITEM \(r.content.body)") }
