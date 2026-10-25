@@ -27,19 +27,17 @@ struct MikeApp: App {
                 OnboardingView()
                 #else
                 if providers.hasCompletedSetup {
-                    TabView(selection: $tab) {
-                        ChatView()
-                            .tag(0)
-                            .tabItem { Label("Chat", systemImage: "bubble.left.and.bubble.right") }
-                        ApprovalsView()
-                            .tag(1)
-                            .tabItem { Label("Approvals", systemImage: "checkmark.shield") }
-                        ActivityView()
-                            .tag(2)
-                            .tabItem { Label("Activity", systemImage: "list.bullet.rectangle") }
-                        SettingsView()
-                            .tag(3)
-                            .tabItem { Label("Settings", systemImage: "gearshape") }
+                    VStack(spacing: 0) {
+                        ZStack {
+                            switch tab {
+                            case 1: ApprovalsView()
+                            case 2: ActivityView()
+                            case 3: SettingsView()
+                            default: ChatView()
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        navBar
                     }
                 } else {
                     OnboardingView()
@@ -50,5 +48,34 @@ struct MikeApp: App {
             .environmentObject(providers)
             .preferredColorScheme(.dark)
         }
+    }
+
+    /// Floating glass capsule nav, icons only (reference: Instagram-style bar
+    /// the user sent). Only real tabs, each with an accessibility label.
+    private var navBar: some View {
+        HStack(spacing: 4) {
+            navButton(0, "bubble.left.and.bubble.right", "Chat")
+            navButton(1, "checkmark.shield", "Approvals")
+            navButton(2, "list.bullet.rectangle", "Activity")
+            navButton(3, "gearshape", "Settings")
+        }
+        .padding(6)
+        .background(.ultraThinMaterial, in: Capsule())
+        .padding(.horizontal, 24)
+        .padding(.bottom, 10)
+    }
+
+    private func navButton(_ index: Int, _ icon: String, _ label: String) -> some View {
+        Button { tab = index } label: {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(tab == index ? Color.gray.opacity(0.55) : Color.clear)
+                .clipShape(Capsule())
+                .accessibilityLabel(label)
+        }
+        .buttonStyle(.plain)
     }
 }
