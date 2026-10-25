@@ -25,6 +25,28 @@ The PC runs the agent; free online models do the thinking. Those third-party
 free tiers can change their limits over time - if they do, Mike says so and
 stops. It never switches to anything paid on its own.
 
+## Run the core on your PC (Linux)
+
+Tested on this repo (bare metal, Python 3.10+):
+
+```bash
+git clone https://github.com/federicotaranudev/mike.git
+cd mike
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # set MIKE_TOKEN now; GROQ_API_KEY later, once approved
+python3 -m pytest tests          # 11 tests should pass
+DB_PATH=./mike.db uvicorn agent.api:app --host 127.0.0.1 --port 8787
+```
+
+This binds to 127.0.0.1 only, so nothing is reachable from the network yet.
+Every endpoint requires `Authorization: Bearer $MIKE_TOKEN` once the token is
+set - set it BEFORE any tunnel or port forward exposes the core. Without a key,
+chat answers honestly that no model is configured; it never calls a paid API.
+
+A Dockerfile and docker-compose.yml are included for later; that route has not
+been tested yet, prefer the commands above for now.
+
 ## What "self-improving" means here
 
 No unbounded robot intelligence. Three real mechanisms:
