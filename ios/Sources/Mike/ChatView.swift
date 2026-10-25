@@ -33,7 +33,12 @@ struct ChatView: View {
                         .padding()
                     }
                     .onChange(of: messages.count) { _, _ in
-                        if let last = messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
+                        // Only auto-scroll once a conversation is going; on a
+                        // fresh screen this used to shove the greeting up
+                        // under the navigation bar when the keyboard opened.
+                        if messages.count > 1, let last = messages.last {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
                     }
                 }
                 HStack(spacing: 8) {
@@ -48,6 +53,9 @@ struct ChatView: View {
                 .padding()
             }
             .navigationTitle("Mike")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .scrollDismissesKeyboard(.interactively)
         }
     }
 
