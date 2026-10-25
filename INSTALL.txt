@@ -1,10 +1,29 @@
-MIKE BACKEND - PC setup (tested on Linux, Python 3.10+)
+MIKE BACKEND - PC setup (tested on Linux, Python 3.10+ incl. 3.14)
 
+GOLDEN RULES (read first):
+- Run every command INSIDE the project folder. After `ls` you must see:
+  agent  tests  requirements.txt  INSTALL.txt  - if not, you are in the
+  wrong folder. Stop, find the folder, continue there.
+- If ANY command prints an error, STOP and ask. Do not run the next line.
+  Errors cascade: one skipped cd makes every later command fail.
+- Never delete or overwrite .env. cp -n below protects it.
+
+GET THE FOLDER (one of these):
+  Unzipped "Mike Backend.zip"? cd into the folder where you unzipped it -
+  that folder IS the project root (it directly contains agent/, tests/...).
+  Or clone fresh:
+    cd ~
+    git clone https://github.com/federicotaranudev/mike.git
+    cd mike
+  Already have ~/mike from an earlier try? Don't git pull over your files:
+    cd ~ && mv mike mike-old && git clone https://github.com/federicotaranudev/mike.git && cd mike
+
+SETUP (from inside the project folder, one line at a time):
   sudo apt update && sudo apt install -y python3 python3-venv git
   python3 -m venv .venv && source .venv/bin/activate
   pip install -r requirements.txt
-  cp .env.example .env        # set MIKE_TOKEN (openssl rand -hex 24); leave GROQ_API_KEY empty
-  python3 -m pytest tests     # 11 tests should pass
+  cp -n .env.example .env     # then edit .env: set MIKE_TOKEN (openssl rand -hex 24); leave GROQ_API_KEY empty
+  python3 -m pytest tests     # 12 tests should pass
   DB_PATH=./mike.db uvicorn agent.api:app --host 127.0.0.1 --port 8787
 
 Notes:
@@ -13,6 +32,8 @@ Notes:
 - Binds to 127.0.0.1 only. Set MIKE_TOKEN BEFORE exposing via any tunnel.
 - Without GROQ_API_KEY, chat answers that no model is configured. It never
   calls a paid API and never switches providers on its own.
+- Self-edit execution is DISABLED on purpose (no isolated sandbox yet).
+  Model-generated code never runs on your PC. This is fail-closed by design.
 - Dockerfile/docker-compose.yml included but that route is UNTESTED.
 - apt commands are standard Ubuntu but verified by documentation, not run in
   the build environment; everything from venv onward WAS run and passed.
