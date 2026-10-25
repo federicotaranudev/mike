@@ -44,7 +44,7 @@ final class ModelManager: NSObject, ObservableObject {
 
     func startDownload() {
         // Need the file plus breathing room; refuse early instead of filling the phone.
-        guard Self.freeBytes() > Self.expectedBytes + 600_000_000 else  // file + working room {
+        guard Self.freeBytes() > Self.expectedBytes + 600_000_000 else {  // file + working room {
             state = .failed("Not enough free space. The model needs about 2.6 GB free; delete it later from here if you change your mind.")
             return
         }
