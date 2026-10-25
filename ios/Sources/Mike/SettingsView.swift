@@ -41,7 +41,7 @@ struct SettingsView: View {
                     Section("On-device model") {
                         switch models.state {
                         case .notDownloaded:
-                            Text("Gemma 4 E2B (2.0 GB, runs on the iPhone GPU). Downloads from Hugging Face over HTTPS - no account needed. Keep Mike open while it downloads. Heads up: the runtime that RUNS the model is still being integrated, so this file cannot chat yet, and 2 GB on an iPhone 13 may be tight - it is untested on your device. Only download if that is OK.")
+                            Text("Gemma 4 E2B (2.0 GB, LiteRT-LM format, made for the iPhone GPU - the runtime that uses it is still being integrated). Downloads from Hugging Face over HTTPS - no account needed. Keep Mike open while it downloads. Heads up: the runtime that RUNS the model is still being integrated, so this file cannot chat yet, and 2 GB on an iPhone 13 may be tight - it is untested on your device. Only download if that is OK.")
                                 .font(.footnote).foregroundStyle(.secondary)
                             Button("Download model") { models.startDownload() }
                         case .downloading(let p):
