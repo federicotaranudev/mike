@@ -4,14 +4,24 @@ Every endpoint reads or writes real state in Memory. Where a capability is
 not built yet, the API says so instead of pretending.
 """
 from __future__ import annotations
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 from .brain import ProviderNotConfigured, QuotaSpent, think
 from .config import settings
 from .memory import Memory
 
-app = FastAPI(title="mike", version="0.1.0")
+async def require_token(authorization: str = Header(default="")):
+    """Every endpoint needs the shared token once one is configured.
+
+    With no MIKE_TOKEN set the core is expected on 127.0.0.1 only (local
+    testing). Never expose it on a network without a token.
+    """
+    if settings.api_token and authorization != f"Bearer {settings.api_token}":
+        raise HTTPException(status_code=401, detail="bad or missing bearer token")
+
+
+app = FastAPI(title="mike", version="0.1.0", dependencies=[Depends(require_token)])
 # Created lazily: importing this module must not require a writable data dir.
 memory: Memory | None = None
 
