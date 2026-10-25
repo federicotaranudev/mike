@@ -1,0 +1,18 @@
+appId: dev.federicotaranu.mike
+---
+# Native keyboard dismissal evidence for the v0.2.8 repair:
+# open the composer keyboard, dismiss by tap-outside, reopen, dismiss by drag-down.
+- launchApp
+- assertVisible: "Message Mike..."
+- takeScreenshot: kb0-closed
+- tapOn: "Message Mike..."
+- takeScreenshot: kb1-open
+- tapOn:
+    point: "50%,35%"
+- takeScreenshot: kb2-tap-dismissed
+- tapOn: "Message Mike..."
+- takeScreenshot: kb3-reopened
+- swipe:
+    start: "50%,45%"
+    end: "50%,80%"
+- takeScreenshot: kb4-drag-dismissed
