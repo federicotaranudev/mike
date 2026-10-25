@@ -131,6 +131,17 @@ check("get_current_time runs read-only", Tooling.run(mkCall("get_current_time", 
 // Bad args never crash the loop - model gets a rejection string
 check("bad args return rejection text", Tooling.run(mkCall("remember", "{}"), store: agentStore).contains("rejected"))
 
+// 10. Queue survives a restart (fresh store, same directory)
+let agentStore2 = AgentStore(directory: tmp)
+check("memory survives restart", agentStore2.memory.first == "Fred likes espressos")
+check("approvals survive restart", agentStore2.approvals.count == agentStore.approvals.count)
+check("activity log survived restart", !agentStore2.activity.isEmpty)
+// 11. An approval can only be resolved once
+let again = agentStore2.resolve(queued2.id, approved: true)
+check("already-resolved approval cannot execute twice", again == nil)
+let deniedAgain = agentStore2.resolve(queued.id, approved: true)
+check("denied approval cannot later be approved", deniedAgain == nil)
+
 // 8. Groq tool_calls response parses (content may be null)
 let mockResp = """
 {"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_9","type":"function","function":{"name":"get_current_time","arguments":"{}"}}]}}]}
