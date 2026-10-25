@@ -2,6 +2,10 @@ import SwiftUI
 
 @main
 struct MikeApp: App {
+    init() {
+        // CI runtime smoke: no-op unless launched with -RuntimeSmoke <path>.
+        RuntimeSmoke.runIfRequested()
+    }
     @StateObject private var api = APIClient()
     @StateObject private var providers = ProviderStore()
     @StateObject private var agent = AgentStore()
