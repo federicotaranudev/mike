@@ -69,6 +69,8 @@ final class ProviderStore: ObservableObject {
         KeychainStore.migrateLegacyToken()
         #if SIM_FORCE_LOCAL
         provider = .local
+        #elseif SIM_FORCE_GROQ
+        provider = .groq
         #else
         if let s = UserDefaults.standard.string(forKey: "mike.provider") {
             provider = InferenceProvider(rawValue: s)
