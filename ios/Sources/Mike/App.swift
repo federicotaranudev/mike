@@ -4,6 +4,8 @@ import SwiftUI
 struct MikeApp: App {
     @StateObject private var api = APIClient()
     @StateObject private var providers = ProviderStore()
+    @StateObject private var agent = AgentStore()
+    @StateObject private var models = ModelManager()
     // The sim-screenshots workflow compiles variants:
     // -D SIM_TAB_APPROVALS / SIM_TAB_ACTIVITY / SIM_TAB_SETTINGS: open that tab
     // -D SIM_ONBOARDING: force the first-launch setup screen
@@ -46,6 +48,8 @@ struct MikeApp: App {
             }
             .environmentObject(api)
             .environmentObject(providers)
+            .environmentObject(agent)
+            .environmentObject(models)
             .preferredColorScheme(.dark)
         }
     }
