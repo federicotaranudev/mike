@@ -8,8 +8,6 @@
 
 ![status](https://img.shields.io/badge/status-v0.1%20scaffold-orange)
 ![python](https://img.shields.io/badge/python-3.13-blue)
-![cost](https://img.shields.io/badge/cost-0%E2%82%AC%20forever-brightgreen)
-![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 </div>
 
@@ -80,4 +78,4 @@ The API listens on `127.0.0.1:8787` and is meant to be reached only through a Cl
 
 ## License
 
-MIT
+No license chosen yet. Private project; all rights reserved by the owner until the user picks one.
