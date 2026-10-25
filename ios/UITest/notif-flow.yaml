@@ -6,7 +6,8 @@ appId: dev.federicotaranu.mike
 # after ~8s; we wait, then kill it so the reminder fires with the app dead.
 - launchApp:
     appId: dev.federicotaranu.mike
-    arguments: "-NotifSmoke"
+    arguments:
+      NotifSmoke: "1"
     permissions:
       notifications: allow
 - waitForAnimationToEnd:
