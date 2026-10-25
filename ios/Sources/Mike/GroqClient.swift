@@ -19,19 +19,27 @@ enum GroqClient {
     /// classifier - Groq then rejected every chat request. Selection is now
     /// deliberate and re-derived on every send, so a bad stored pick from an
     /// older build heals itself without the user re-entering the key.
-    static let blockedModelPatterns = ["guard", "whisper", "tts", "embedding", "prompt-guard", "moderation"]
-    static let preferredChatPatterns = ["llama-3.3-70b-versatile", "versatile", "instant", "gpt-oss", "instruct", "qwen", "kimi", "compound", "llama"]
+    /// Chat-capable Groq models Mike supports, most-preferred first. Only ids
+    /// on this list are ever used - anything else in the account (classifiers,
+    /// audio, embeddings, unknown future ids) is never silently selected.
+    /// Re-derived on every send, so a bad stored pick from an older build
+    /// heals itself without the user re-entering the key.
+    static let supportedChatModels = [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
+        "qwen/qwen3-32b",
+        "moonshotai/kimi-k2-instruct",
+    ]
 
-    static func resolveChatModel(from ids: [String]? = nil) -> String {
+    /// Returns nil when the account has none of the supported chat models -
+    /// callers must show a clear error, never fall back to a guess.
+    static func resolveChatModel(from ids: [String]? = nil) -> String? {
         let list = ids ?? (UserDefaults.standard.stringArray(forKey: "mike.groqModels") ?? [])
-        let candidates = list.filter { id in
-            let low = id.lowercased()
-            return !blockedModelPatterns.contains { low.contains($0) }
-        }
-        for pat in preferredChatPatterns {
-            if let hit = candidates.first(where: { $0.lowercased().contains(pat) }) { return hit }
-        }
-        return candidates.first ?? "llama-3.3-70b-versatile"
+        return supportedChatModels.first { list.contains($0) }
     }
 
     /// Real check against Groq's model list. Returns a human-readable verdict.
@@ -52,10 +60,14 @@ enum GroqClient {
             }
             let ids = models.data.map { $0.id }
             UserDefaults.standard.set(ids, forKey: "mike.groqModels")
-            let model = resolveChatModel(from: ids)
+            guard let model = resolveChatModel(from: ids) else {
+                UserDefaults.standard.removeObject(forKey: "mike.groqModel")
+                return "The key is valid, but none of the chat models Mike supports are enabled on this account. No chat model was saved."
+            }
             UserDefaults.standard.set(model, forKey: "mike.groqModel")
-            // Listing models only proves the key reads the account. Actually
-            // send one minimal chat request before claiming chat works.
+            // Listing models only proves the key reads the account. This
+            // intentionally sends one minimal chat request to prove chat
+            // actually works before saying so.
             do {
                 _ = try await chat(key: key, history: [Msg(role: "user", content: "Reply with: ok")], maxTokens: 4, model: model)
                 return "Chat works with \(model) (\(ids.count) models on the account)."
@@ -68,7 +80,10 @@ enum GroqClient {
     }
 
     static func chat(key: String, history: [Msg], maxTokens: Int = 1024, model: String? = nil) async throws -> String {
-        let model = model ?? resolveChatModel()
+        guard let model = model ?? resolveChatModel() else {
+            throw NSError(domain: "Groq", code: 0, userInfo: [NSLocalizedDescriptionKey:
+                "No supported chat model is available on this Groq account. Open Settings and re-test the key."])
+        }
         var req = URLRequest(url: URL(string: "https://api.groq.com/openai/v1/chat/completions")!)
         req.httpMethod = "POST"
         req.timeoutInterval = 60
