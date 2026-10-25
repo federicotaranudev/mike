@@ -48,6 +48,13 @@ def test_stop_pauses_chat(client):
     assert client.get("/status").json()["paused"] is False
 
 
+def test_token_required_when_configured(client, monkeypatch):
+    import dataclasses
+    monkeypatch.setattr(api, "settings", dataclasses.replace(api.settings, api_token="secret"))
+    assert client.get("/status").status_code == 401
+    assert client.get("/status", headers={"Authorization": "Bearer secret"}).status_code == 200
+
+
 def test_chat_without_key_fails_closed(client, monkeypatch):
     import dataclasses
     monkeypatch.setattr(api, "settings", dataclasses.replace(api.settings, groq_api_key=""))
