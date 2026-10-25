@@ -4,6 +4,7 @@ struct ChatView: View {
     @EnvironmentObject var api: APIClient
     @EnvironmentObject var providers: ProviderStore
     @EnvironmentObject var agent: AgentStore
+    @EnvironmentObject var models: ModelManager
     #if SIM_FORCE_LOCAL
     // Screenshot variant: show the honest "not wired yet" state up front.
     @State private var messages: [ChatMessage] = [
@@ -122,8 +123,20 @@ struct ChatView: View {
                         text: "Can't reach the backend you set. Check the URL and token in Settings, and that the core is running."))
                 }
             case .local:
-                messages.append(ChatMessage(role: .mike,
-                    text: "The on-device model isn't wired into this build yet - I won't fake a reply before the runtime lands. Switch provider in Settings if you want to chat right now."))
+                switch models.state {
+                case .downloaded:
+                    do {
+                        let reply = try await LocalInference.reply(to: text, modelPath: models.modelFileURL.path)
+                        agent.log("local", "Replied on-device with Gemma 4 E2B")
+                        messages.append(ChatMessage(role: .mike, text: reply))
+                    } catch {
+                        messages.append(ChatMessage(role: .mike,
+                            text: "The local model failed to run: \(error.localizedDescription) Nothing was faked - switch provider in Settings if you want to chat right now."))
+                    }
+                default:
+                    messages.append(ChatMessage(role: .mike,
+                        text: "The on-device model isn't downloaded yet. Get it in Settings (2.0 GB, runs on the iPhone GPU - first reply loads it, which takes a while, and it's untested on iPhone 13). No download, no fake replies."))
+                }
             case nil:
                 messages.append(ChatMessage(role: .mike,
                     text: "Setup isn't finished yet. Pick where Mike thinks on the setup screen."))
@@ -132,4 +145,4 @@ struct ChatView: View {
     }
 }
 
-#Preview { ChatView().environmentObject(APIClient()).environmentObject(ProviderStore()).environmentObject(AgentStore()) }
+#Preview { ChatView().environmentObject(APIClient()).environmentObject(ProviderStore()).environmentObject(AgentStore()).environmentObject(ModelManager()) }
