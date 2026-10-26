@@ -31,8 +31,12 @@ enum RuntimeSmoke {
                         return
                     }
                     NSLog("NOTIF_SCHEDULING attempt=\(attempt) via Tooling.scheduleNotification")
+                    // Fire time must outlive the notif-flow AND the proactive
+                    // check-in (which must see the reminder still pending); it
+                    // fires only after both, while the app is dead, for the
+                    // delivery check.
                     Tooling.scheduleNotification(text: "Mike CI notification smoke",
-                                                 at: Date().addingTimeInterval(65), store: store)
+                                                 at: Date().addingTimeInterval(300), store: store)
                     center.getNotificationSettings { st in
                         // 0 notDetermined, 1 denied, 2 authorized, 3 provisional, 4 ephemeral
                         NSLog("NOTIF_AUTH_STATUS raw=\(st.authorizationStatus.rawValue)")
