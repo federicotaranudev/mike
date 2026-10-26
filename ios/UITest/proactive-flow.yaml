@@ -25,3 +25,6 @@ appId: dev.federicotaranu.mike
     notVisible:
       text: "Welcome back"
     timeout: 10000
+# Leave the app dead: the reminder must fire (and be delivered) with Mike not
+# running, which is the case the delivery check exists for.
+- killApp
