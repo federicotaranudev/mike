@@ -78,14 +78,14 @@ jobs:
       - name: Rename IPA
         run: mv ios/xtool/*.ipa ios/xtool/Mike-iPhone.ipa
 
-      - name: Read release version (single source: VERSION file)
+      - name: "Read release version (single source: VERSION file)"
         id: ver
         run: |
           set -euo pipefail
           V=$(tr -d '[:space:]' < VERSION)
           [ -n "$V" ] || { echo "VERSION file empty"; exit 1; }
           echo "tag=v$V" >> "$GITHUB_OUTPUT"
-      - name: Guard: never overwrite an existing release
+      - name: "Guard: never overwrite an existing release"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
