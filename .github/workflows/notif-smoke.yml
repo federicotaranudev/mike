@@ -88,8 +88,16 @@ jobs:
           maestro test ios/UITest/proactive-flow.yaml 2>&1 | tee /tmp/proactive.log
           RC=$?
           set -e
+          xcrun simctl spawn booted log show --last 3m --style compact --predicate 'process == "MikeSim"' 2>/dev/null | grep -E "PROACTIVE_" > /tmp/proactive-signals.log || true
+          { echo "### Proactive engine signals"; echo '```'; cat /tmp/proactive-signals.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           mkdir -p shots
           find "$HOME/.maestro" -name 'proactive-checkin*.png' -exec cp {} shots/ \; || true
+          # On failure Maestro never reaches takeScreenshot; grab its automatic
+          # debug capture so the visible state is evidence either way.
+          if ! compgen -G "shots/*.png" > /dev/null; then
+            LATEST=$(ls -td "$HOME"/.maestro/tests/*/ 2>/dev/null | head -1 || true)
+            [ -n "$LATEST" ] && find "$LATEST" -name '*.png' -exec cp {} shots/ \; || true
+          fi
           if [ $RC -ne 0 ]; then
             { echo "### Proactive check-in FAILED"; echo '```'; tail -8 /tmp/proactive.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
             exit 1
@@ -98,8 +106,8 @@ jobs:
       - name: Wait for fire time, relaunch, verify delivery
         run: |
           set -euo pipefail
-          echo "waiting 80s for the reminder to fire while the app is dead..."
-          sleep 80
+          echo "waiting for the +300s reminder to fire while the app is dead..."
+          sleep 200
           set +e
           xcrun simctl launch --console booted dev.federicotaranu.mike -NotifCheck 2>&1 | grep --line-buffered -E "NOTIF_|error|Error" | tee /tmp/notif-check.log
           set -e
