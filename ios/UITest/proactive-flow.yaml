@@ -9,9 +9,11 @@ appId: dev.federicotaranu.mike
     appId: dev.federicotaranu.mike
     arguments:
       SeedLocalProvider: "1"
+# Maestro text selectors full-match the element's text as a regex, so the
+# greeting's dynamic suffix ("... 1 reminder set, next at 00:33.") needs .*.
 - extendedWaitUntil:
     visible:
-      text: "Welcome back"
+      text: "Welcome back.*"
     timeout: 20000
 - takeScreenshot: proactive-checkin
 - killApp
@@ -23,7 +25,7 @@ appId: dev.federicotaranu.mike
     timeout: 8000
 - extendedWaitUntil:
     notVisible:
-      text: "Welcome back"
+      text: "Welcome back.*"
     timeout: 10000
 # Leave the app dead: the reminder must fire (and be delivered) with Mike not
 # running, which is the case the delivery check exists for.
