@@ -78,9 +78,28 @@ jobs:
       - name: Rename IPA
         run: mv ios/xtool/*.ipa ios/xtool/Mike-iPhone.ipa
 
+      - name: Read release version (single source: VERSION file)
+        id: ver
+        run: |
+          set -euo pipefail
+          V=$(tr -d '[:space:]' < VERSION)
+          [ -n "$V" ] || { echo "VERSION file empty"; exit 1; }
+          echo "tag=v$V" >> "$GITHUB_OUTPUT"
+      - name: Guard: never overwrite an existing release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view "${{ steps.ver.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::Release ${{ steps.ver.outputs.tag }} already exists. Bump the VERSION file - releases are immutable once published."
+            exit 1
+          fi
       - name: Publish release with the IPA
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.4.3
-          name: Mike iPhone v0.4.3 - proactive check-in (pending + fired-while-closed reminders), notification acceptance proven
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Mike iPhone ${{ steps.ver.outputs.tag }}
+          body: |
+            Automated CI build of the Mike iPhone app (tag from the VERSION file).
+            What's in this exact build is described in the repository state at this tag - no feature is claimed beyond it.
           files: ios/xtool/Mike-iPhone.ipa
