@@ -47,8 +47,15 @@ enum ProactiveEngine {
                 let fired = notes.filter { $0.request.content.title == "Mike reminder" }
                 let digest = signalDigest(approvalIDs: waiting.map { $0.id },
                                           reminderIDs: pending.map { $0.identifier } + fired.map { $0.request.identifier })
-                guard (!waiting.isEmpty || !pending.isEmpty || !fired.isEmpty),
-                      shouldSpeak(currentDigest: digest) else { return }
+                NSLog("PROACTIVE_SIGNALS pending=\(pending.count) fired=\(fired.count) approvals=\(waiting.count)")
+                guard (!waiting.isEmpty || !pending.isEmpty || !fired.isEmpty) else {
+                    NSLog("PROACTIVE_SILENT reason=no-signals")
+                    return
+                }
+                guard shouldSpeak(currentDigest: digest) else {
+                    NSLog("PROACTIVE_SILENT reason=signals-unchanged")
+                    return
+                }
                 var parts: [String] = []
                 if !waiting.isEmpty {
                     var p = "\(waiting.count) thing\(waiting.count == 1 ? "" : "s") need\(waiting.count == 1 ? "s" : "") your yes in Approvals"
@@ -78,6 +85,7 @@ enum ProactiveEngine {
                 let text = "Welcome back - while you were away: " + parts.joined(separator: "; ") + "."
                 DispatchQueue.main.async {
                     markSpoken(digest)
+                    NSLog("PROACTIVE_SPOKE \(text)")
                     store.log("proactive", "Spoke up first: \(text)")
                     deliver(text)
                 }
