@@ -81,6 +81,6 @@ jobs:
       - name: Publish release with the IPA
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.4.2
-          name: Mike iPhone v0.4.2 - model artifact choice, real Liquid Glass (SDK26 relink verified)
+          tag_name: v0.4.3
+          name: Mike iPhone v0.4.3 - proactive check-in (pending + fired-while-closed reminders), notification acceptance proven
           files: ios/xtool/Mike-iPhone.ipa
